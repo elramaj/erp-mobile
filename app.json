@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/images/splash-icon.png",
-      "resizeMode": "contain",
+      "resizeMode": "cover",
       "backgroundColor": "#dc2626"
     },
     "ios": {
@@ -18,8 +18,20 @@
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/android-icon-foreground.png",
         "backgroundColor": "#dc2626"
-      }
+      },
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.ACCESS_COARSE_LOCATION",
+        "android.permission.ACCESS_FINE_LOCATION"
+      ],
+      "package": "com.ramaj.erpmobile"
     },
-    "plugins": ["expo-barcode-scanner", "expo-camera", "expo-location"]
+    "plugins": ["expo-camera", "expo-location"],
+    "extra": {
+      "eas": {
+        "projectId": "bf36e0a2-a49f-42c9-9bef-06334cbce347"
+      }
+    }
   }
 }
