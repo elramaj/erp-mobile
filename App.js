@@ -80,6 +80,12 @@ function LogoutButton({ onLogout }) {
 function MainTabs({ onLogout, user }) {
   const bisaAksesGudang = user && ROLE_GUDANG.includes(user.role_id);
 
+  // DEBUG - hapus setelah masalah solved
+  console.log("USER OBJECT:", JSON.stringify(user));
+  console.log("ROLE_ID:", user?.role_id);
+  console.log("TIPE ROLE_ID:", typeof user?.role_id);
+  console.log("BISA AKSES GUDANG:", bisaAksesGudang);
+
   return (
     <Tab.Navigator
       screenOptions={{
@@ -152,8 +158,12 @@ function App() {
     try {
       const token = await AsyncStorage.getItem("token");
       const userStr = await AsyncStorage.getItem("user");
+      console.log("TOKEN:", token);
+      console.log("USER DI STORAGE:", userStr);
       if (token && userStr) {
-        setUser(JSON.parse(userStr));
+        const userData = JSON.parse(userStr);
+        console.log("USER PARSED:", JSON.stringify(userData));
+        setUser(userData);
         setIsLoggedIn(true);
       }
     } catch (err) {
