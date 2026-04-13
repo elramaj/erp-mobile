@@ -8,7 +8,7 @@
     "userInterfaceStyle": "light",
     "splash": {
       "image": "./assets/images/splash-icon.png",
-      "resizeMode": "native",
+      "resizeMode": "cover",
       "backgroundColor": "#dc2626"
     },
     "ios": {
