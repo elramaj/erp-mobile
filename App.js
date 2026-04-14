@@ -78,7 +78,7 @@ function LogoutButton({ onLogout }) {
 }
 
 function MainTabs({ onLogout, user }) {
-  const bisaAksesGudang = user && ROLE_GUDANG.includes(user.role_id);
+  const bisaAksesGudang = user && ROLE_GUDANG.includes(Number(user.role_id));
 
   // DEBUG - hapus setelah masalah solved
   console.log("USER OBJECT:", JSON.stringify(user));
