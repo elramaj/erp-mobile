@@ -3,19 +3,23 @@ import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { registerRootComponent } from "expo";
-import { useEffect, useState } from "react";
+import * as SplashScreen from "expo-splash-screen";
+import { useCallback, useEffect, useState } from "react";
 import {
-  ActivityIndicator,
   Alert,
+  Image,
+  StatusBar,
   Text,
   TouchableOpacity,
-  View,
+  View
 } from "react-native";
 
 import AbsensiScreen from "./src/screens/AbsensiScreen";
 import GudangScreen from "./src/screens/GudangScreen";
 import IzinScreen from "./src/screens/IzinScreen";
 import LoginScreen from "./src/screens/LoginScreen";
+
+SplashScreen.preventAutoHideAsync();
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -143,12 +147,13 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
+  const [appReady, setAppReady] = useState(false);
 
   useEffect(() => {
-    cekLogin();
+    prepareApp();
   }, []);
 
-  const cekLogin = async () => {
+  const prepareApp = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
       const userStr = await AsyncStorage.getItem("user");
@@ -156,44 +161,43 @@ function App() {
         setUser(JSON.parse(userStr));
         setIsLoggedIn(true);
       }
+      // Simulasi splash screen 2 detik
+      await new Promise((resolve) => setTimeout(resolve, 2000));
     } catch (err) {
-      console.log("Error cek login:", err);
+      console.log("Error:", err);
     } finally {
+      setAppReady(true);
       setLoading(false);
     }
   };
 
-  const handleLoginSuccess = async () => {
-    try {
-      const userStr = await AsyncStorage.getItem("user");
-      if (userStr) setUser(JSON.parse(userStr));
-    } catch (err) {}
-    setIsLoggedIn(true);
-  };
+  const onLayoutRootView = useCallback(async () => {
+    if (appReady) {
+      await SplashScreen.hideAsync();
+    }
+  }, [appReady]);
 
-  const handleLogout = async () => {
-    await AsyncStorage.removeItem("token");
-    await AsyncStorage.removeItem("user");
-    setUser(null);
-    setIsLoggedIn(false);
-  };
-
-  if (loading)
+  if (!appReady) {
     return (
       <View
         style={{
           flex: 1,
-          justifyContent: "center",
-          alignItems: "center",
-          backgroundColor: "#fff",
+          backgroundColor: "#dc2626",
         }}
+        onLayout={onLayoutRootView}
       >
-        <ActivityIndicator size="large" color="#dc2626" />
-        <Text style={{ marginTop: 12, color: "#6b7280" }}>
-          Memuat aplikasi...
-        </Text>
+        <StatusBar barStyle="light-content" backgroundColor="#dc2626" />
+        <Image
+          source={require("./assets/images/splash-icon.png")}
+          style={{
+            width: "100%",
+            height: "100%",
+            resizeMode: "cover",
+          }}
+        />
       </View>
     );
+  }
 
   return (
     <NavigationContainer>
@@ -210,6 +214,20 @@ function App() {
       </Stack.Navigator>
     </NavigationContainer>
   );
+
+  function handleLoginSuccess() {
+    AsyncStorage.getItem("user").then((userStr) => {
+      if (userStr) setUser(JSON.parse(userStr));
+    });
+    setIsLoggedIn(true);
+  }
+
+  function handleLogout() {
+    AsyncStorage.removeItem("token");
+    AsyncStorage.removeItem("user");
+    setUser(null);
+    setIsLoggedIn(false);
+  }
 }
 
 registerRootComponent(App);
