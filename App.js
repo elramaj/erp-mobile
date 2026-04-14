@@ -11,7 +11,7 @@ import {
   StatusBar,
   Text,
   TouchableOpacity,
-  View
+  View,
 } from "react-native";
 
 import AbsensiScreen from "./src/screens/AbsensiScreen";
@@ -144,7 +144,6 @@ function MainTabs({ onLogout, user }) {
 }
 
 function App() {
-  const [loading, setLoading] = useState(true);
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [user, setUser] = useState(null);
   const [appReady, setAppReady] = useState(false);
@@ -161,13 +160,11 @@ function App() {
         setUser(JSON.parse(userStr));
         setIsLoggedIn(true);
       }
-      // Simulasi splash screen 2 detik
       await new Promise((resolve) => setTimeout(resolve, 2000));
     } catch (err) {
       console.log("Error:", err);
     } finally {
       setAppReady(true);
-      setLoading(false);
     }
   };
 
@@ -177,23 +174,31 @@ function App() {
     }
   }, [appReady]);
 
+  const handleLoginSuccess = async () => {
+    try {
+      const userStr = await AsyncStorage.getItem("user");
+      if (userStr) setUser(JSON.parse(userStr));
+    } catch (err) {}
+    setIsLoggedIn(true);
+  };
+
+  const handleLogout = async () => {
+    await AsyncStorage.removeItem("token");
+    await AsyncStorage.removeItem("user");
+    setUser(null);
+    setIsLoggedIn(false);
+  };
+
   if (!appReady) {
     return (
       <View
-        style={{
-          flex: 1,
-          backgroundColor: "#dc2626",
-        }}
+        style={{ flex: 1, backgroundColor: "#991b1b" }}
         onLayout={onLayoutRootView}
       >
-        <StatusBar barStyle="light-content" backgroundColor="#dc2626" />
+        <StatusBar barStyle="light-content" backgroundColor="#991b1b" />
         <Image
           source={require("./assets/images/splash-icon.png")}
-          style={{
-            width: "100%",
-            height: "100%",
-            resizeMode: "cover",
-          }}
+          style={{ width: "100%", height: "100%", resizeMode: "cover" }}
         />
       </View>
     );
@@ -214,20 +219,6 @@ function App() {
       </Stack.Navigator>
     </NavigationContainer>
   );
-
-  function handleLoginSuccess() {
-    AsyncStorage.getItem("user").then((userStr) => {
-      if (userStr) setUser(JSON.parse(userStr));
-    });
-    setIsLoggedIn(true);
-  }
-
-  function handleLogout() {
-    AsyncStorage.removeItem("token");
-    AsyncStorage.removeItem("user");
-    setUser(null);
-    setIsLoggedIn(false);
-  }
 }
 
 registerRootComponent(App);
