@@ -1,15 +1,18 @@
+import * as DocumentPicker from "expo-document-picker";
+import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Alert,
-    FlatList,
-    Modal,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  ActivityIndicator,
+  Alert,
+  FlatList,
+  Image,
+  Modal,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
 } from "react-native";
 import api from "../services/api";
 
@@ -31,11 +34,13 @@ const STATUS_COLOR = {
 };
 
 export default function IzinScreen() {
-  const [tab, setTab] = useState("riwayat"); // riwayat | ajukan
+  const [tab, setTab] = useState("riwayat");
   const [riwayat, setRiwayat] = useState([]);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [showJenisPicker, setShowJenisPicker] = useState(false);
+  const [showAttachPicker, setShowAttachPicker] = useState(false);
+  const [attachments, setAttachments] = useState([]);
   const [form, setForm] = useState({
     jenis: "izin",
     tanggal_mulai: new Date().toISOString().split("T")[0],
@@ -59,6 +64,102 @@ export default function IzinScreen() {
     }
   };
 
+  // ─── Attachment Handlers ───────────────────────────────────────────────────
+
+  const pickFromCamera = async () => {
+    setShowAttachPicker(false);
+    const { status } = await ImagePicker.requestCameraPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert(
+        "Izin Ditolak",
+        "Izin kamera diperlukan untuk mengambil foto.",
+      );
+      return;
+    }
+    const result = await ImagePicker.launchCameraAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.[0]) {
+      const asset = result.assets[0];
+      setAttachments((prev) => [
+        ...prev,
+        {
+          id: Date.now().toString(),
+          type: "image",
+          uri: asset.uri,
+          name: `foto_${Date.now()}.jpg`,
+          mimeType: "image/jpeg",
+        },
+      ]);
+    }
+  };
+
+  const pickFromGallery = async () => {
+    setShowAttachPicker(false);
+    const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+    if (status !== "granted") {
+      Alert.alert("Izin Ditolak", "Izin galeri diperlukan untuk memilih foto.");
+      return;
+    }
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsMultipleSelection: true,
+      quality: 0.8,
+    });
+    if (!result.canceled && result.assets?.length > 0) {
+      const newFiles = result.assets.map((asset) => ({
+        id: Date.now().toString() + Math.random(),
+        type: "image",
+        uri: asset.uri,
+        name: asset.fileName ?? `foto_${Date.now()}.jpg`,
+        mimeType: asset.mimeType ?? "image/jpeg",
+      }));
+      setAttachments((prev) => [...prev, ...newFiles]);
+    }
+  };
+
+  const pickDocument = async () => {
+    setShowAttachPicker(false);
+    const result = await DocumentPicker.getDocumentAsync({
+      type: "application/pdf",
+      multiple: true,
+      copyToCacheDirectory: true,
+    });
+    if (!result.canceled && result.assets?.length > 0) {
+      const newFiles = result.assets.map((asset) => ({
+        id: Date.now().toString() + Math.random(),
+        type: "pdf",
+        uri: asset.uri,
+        name: asset.name,
+        mimeType: "application/pdf",
+        size: asset.size,
+      }));
+      setAttachments((prev) => [...prev, ...newFiles]);
+    }
+  };
+
+  const removeAttachment = (id) => {
+    Alert.alert("Hapus File", "Yakin ingin menghapus file ini?", [
+      { text: "Batal", style: "cancel" },
+      {
+        text: "Hapus",
+        style: "destructive",
+        onPress: () =>
+          setAttachments((prev) => prev.filter((a) => a.id !== id)),
+      },
+    ]);
+  };
+
+  const formatFileSize = (bytes) => {
+    if (!bytes) return "";
+    if (bytes < 1024) return `${bytes} B`;
+    if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+    return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+  };
+
+  // ─── Submit ────────────────────────────────────────────────────────────────
+
   const submitIzin = async () => {
     if (!form.alasan.trim()) {
       Alert.alert("Error", "Alasan wajib diisi!");
@@ -71,16 +172,39 @@ export default function IzinScreen() {
       );
       return;
     }
+    if (form.jenis === "sakit" && attachments.length === 0) {
+      Alert.alert(
+        "Lampiran Wajib",
+        "Izin sakit wajib melampirkan surat dokter atau foto bukti.",
+      );
+      return;
+    }
 
     setSubmitting(true);
     try {
-      const res = await api("/izin", "POST", form);
+      // Kirim pakai FormData supaya bisa upload file
+      const formData = new FormData();
+      formData.append("jenis", form.jenis);
+      formData.append("tanggal_mulai", form.tanggal_mulai);
+      formData.append("tanggal_selesai", form.tanggal_selesai);
+      formData.append("alasan", form.alasan);
+
+      attachments.forEach((file, index) => {
+        formData.append(`attachments[${index}]`, {
+          uri: file.uri,
+          name: file.name,
+          type: file.mimeType,
+        });
+      });
+
+      const res = await api("/izin", "POST", formData, true); // true = multipart
       if (res.success) {
         Alert.alert("✅ Berhasil!", res.message, [
           {
             text: "OK",
             onPress: () => {
               setTab("riwayat");
+              setAttachments([]);
               setForm({
                 jenis: "izin",
                 tanggal_mulai: new Date().toISOString().split("T")[0],
@@ -103,6 +227,8 @@ export default function IzinScreen() {
 
   const getJenisLabel = (key) =>
     JENIS_IZIN.find((j) => j.key === key)?.label ?? key;
+
+  // ─── Render Riwayat ────────────────────────────────────────────────────────
 
   const renderRiwayat = () => (
     <View style={{ flex: 1 }}>
@@ -147,6 +273,13 @@ export default function IzinScreen() {
                 <Text style={styles.izinAlasan} numberOfLines={2}>
                   {item.alasan}
                 </Text>
+                {item.attachments?.length > 0 && (
+                  <View style={styles.attachmentInfo}>
+                    <Text style={styles.attachmentInfoText}>
+                      📎 {item.attachments.length} lampiran
+                    </Text>
+                  </View>
+                )}
                 {item.catatan_review && (
                   <View style={styles.catatanReview}>
                     <Text style={styles.catatanReviewLabel}>
@@ -179,6 +312,8 @@ export default function IzinScreen() {
       )}
     </View>
   );
+
+  // ─── Render Ajukan ─────────────────────────────────────────────────────────
 
   const renderAjukan = () => (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
@@ -246,6 +381,86 @@ export default function IzinScreen() {
         multiline
       />
 
+      {/* Attachment Section */}
+      <View style={styles.attachSection}>
+        <View style={styles.attachHeader}>
+          <Text style={styles.label}>
+            Lampiran{" "}
+            {form.jenis === "sakit" ? (
+              <Text style={{ color: "#dc2626" }}>* (Wajib untuk Sakit)</Text>
+            ) : (
+              <Text style={{ color: "#9ca3af" }}>(Opsional)</Text>
+            )}
+          </Text>
+          <TouchableOpacity
+            style={styles.btnTambahFile}
+            onPress={() => setShowAttachPicker(true)}
+          >
+            <Text style={styles.btnTambahFileText}>+ Tambah File</Text>
+          </TouchableOpacity>
+        </View>
+
+        {/* Daftar file yang dipilih */}
+        {attachments.length === 0 ? (
+          <TouchableOpacity
+            style={styles.attachPlaceholder}
+            onPress={() => setShowAttachPicker(true)}
+          >
+            <Text style={styles.attachPlaceholderIcon}>📎</Text>
+            <Text style={styles.attachPlaceholderText}>
+              Ketuk untuk menambahkan foto atau PDF
+            </Text>
+            {form.jenis === "sakit" && (
+              <Text style={styles.attachPlaceholderHint}>
+                Surat dokter wajib dilampirkan
+              </Text>
+            )}
+          </TouchableOpacity>
+        ) : (
+          <View style={styles.attachList}>
+            {attachments.map((file) => (
+              <View key={file.id} style={styles.attachItem}>
+                {file.type === "image" ? (
+                  <Image
+                    source={{ uri: file.uri }}
+                    style={styles.attachThumb}
+                  />
+                ) : (
+                  <View style={styles.attachPdfThumb}>
+                    <Text style={styles.attachPdfIcon}>📄</Text>
+                  </View>
+                )}
+                <View style={styles.attachItemInfo}>
+                  <Text style={styles.attachItemName} numberOfLines={1}>
+                    {file.name}
+                  </Text>
+                  {file.size && (
+                    <Text style={styles.attachItemSize}>
+                      {formatFileSize(file.size)}
+                    </Text>
+                  )}
+                  <Text style={styles.attachItemType}>
+                    {file.type === "image" ? "🖼️ Foto" : "📄 PDF"}
+                  </Text>
+                </View>
+                <TouchableOpacity
+                  style={styles.attachRemoveBtn}
+                  onPress={() => removeAttachment(file.id)}
+                >
+                  <Text style={styles.attachRemoveText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+            ))}
+            <TouchableOpacity
+              style={styles.btnTambahLagi}
+              onPress={() => setShowAttachPicker(true)}
+            >
+              <Text style={styles.btnTambahLagiText}>+ Tambah File Lagi</Text>
+            </TouchableOpacity>
+          </View>
+        )}
+      </View>
+
       <View style={styles.infoBox}>
         <Text style={styles.infoText}>
           ℹ️ Pengajuan akan dikirim ke admin/atasan untuk direview. Status akan
@@ -265,7 +480,7 @@ export default function IzinScreen() {
         )}
       </TouchableOpacity>
 
-      {/* Modal Pilih Jenis */}
+      {/* Modal Pilih Jenis Izin */}
       <Modal visible={showJenisPicker} transparent animationType="slide">
         <View style={styles.modalOverlay}>
           <View style={styles.modalCard}>
@@ -309,12 +524,64 @@ export default function IzinScreen() {
           </View>
         </View>
       </Modal>
+
+      {/* Modal Pilih Sumber File */}
+      <Modal visible={showAttachPicker} transparent animationType="slide">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalCard}>
+            <Text style={styles.modalTitle}>Tambah Lampiran</Text>
+            <TouchableOpacity
+              style={styles.attachOptionBtn}
+              onPress={pickFromCamera}
+            >
+              <Text style={styles.attachOptionIcon}>📷</Text>
+              <View>
+                <Text style={styles.attachOptionLabel}>Ambil Foto</Text>
+                <Text style={styles.attachOptionDesc}>
+                  Buka kamera untuk foto langsung
+                </Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.attachOptionBtn}
+              onPress={pickFromGallery}
+            >
+              <Text style={styles.attachOptionIcon}>🖼️</Text>
+              <View>
+                <Text style={styles.attachOptionLabel}>Pilih dari Galeri</Text>
+                <Text style={styles.attachOptionDesc}>
+                  Pilih foto dari galeri HP
+                </Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.attachOptionBtn}
+              onPress={pickDocument}
+            >
+              <Text style={styles.attachOptionIcon}>📄</Text>
+              <View>
+                <Text style={styles.attachOptionLabel}>Pilih Dokumen PDF</Text>
+                <Text style={styles.attachOptionDesc}>
+                  Upload surat dokter atau dokumen PDF
+                </Text>
+              </View>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.btnBatalModal}
+              onPress={() => setShowAttachPicker(false)}
+            >
+              <Text style={styles.btnBatalModalText}>Batal</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </Modal>
     </ScrollView>
   );
 
+  // ─── Main Render ───────────────────────────────────────────────────────────
+
   return (
     <View style={{ flex: 1, backgroundColor: "#f9fafb" }}>
-      {/* Tab Bar */}
       <View style={styles.tabBar}>
         <TouchableOpacity
           style={[styles.tabItem, tab === "riwayat" && styles.tabActive]}
@@ -385,6 +652,15 @@ const styles = StyleSheet.create({
   izinTanggal: { marginBottom: 6 },
   izinTanggalText: { fontSize: 13, color: "#6b7280" },
   izinAlasan: { fontSize: 13, color: "#374151", lineHeight: 20 },
+  attachmentInfo: {
+    marginTop: 8,
+    backgroundColor: "#f0fdf4",
+    borderRadius: 6,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    alignSelf: "flex-start",
+  },
+  attachmentInfoText: { fontSize: 12, color: "#15803d", fontWeight: "600" },
   catatanReview: {
     marginTop: 10,
     backgroundColor: "#f9fafb",
@@ -451,6 +727,99 @@ const styles = StyleSheet.create({
     borderColor: "#bfdbfe",
   },
   durasiText: { fontSize: 14, color: "#1d4ed8", fontWeight: "600" },
+
+  // Attachment
+  attachSection: { marginBottom: 16 },
+  attachHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  btnTambahFile: {
+    backgroundColor: "#dc2626",
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  btnTambahFileText: { color: "white", fontSize: 12, fontWeight: "700" },
+  attachPlaceholder: {
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+    borderRadius: 12,
+    borderStyle: "dashed",
+    padding: 24,
+    alignItems: "center",
+    backgroundColor: "white",
+    gap: 6,
+  },
+  attachPlaceholderIcon: { fontSize: 32 },
+  attachPlaceholderText: { fontSize: 13, color: "#6b7280", fontWeight: "600" },
+  attachPlaceholderHint: { fontSize: 12, color: "#dc2626", fontWeight: "600" },
+  attachList: { gap: 8 },
+  attachItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "white",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#e5e7eb",
+    gap: 12,
+  },
+  attachThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 8,
+    backgroundColor: "#f3f4f6",
+  },
+  attachPdfThumb: {
+    width: 52,
+    height: 52,
+    borderRadius: 8,
+    backgroundColor: "#fee2e2",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  attachPdfIcon: { fontSize: 24 },
+  attachItemInfo: { flex: 1, gap: 2 },
+  attachItemName: { fontSize: 13, fontWeight: "600", color: "#111827" },
+  attachItemSize: { fontSize: 11, color: "#9ca3af" },
+  attachItemType: { fontSize: 11, color: "#6b7280" },
+  attachRemoveBtn: {
+    width: 28,
+    height: 28,
+    borderRadius: 14,
+    backgroundColor: "#fee2e2",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  attachRemoveText: { fontSize: 12, color: "#dc2626", fontWeight: "700" },
+  btnTambahLagi: {
+    borderWidth: 1.5,
+    borderColor: "#dc2626",
+    borderRadius: 10,
+    padding: 12,
+    alignItems: "center",
+    borderStyle: "dashed",
+  },
+  btnTambahLagiText: { color: "#dc2626", fontSize: 13, fontWeight: "700" },
+
+  // Attach Option Modal
+  attachOptionBtn: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#e5e7eb",
+    gap: 14,
+  },
+  attachOptionIcon: { fontSize: 28 },
+  attachOptionLabel: { fontSize: 15, fontWeight: "700", color: "#111827" },
+  attachOptionDesc: { fontSize: 12, color: "#6b7280", marginTop: 2 },
+
+  // Info & Submit
   infoBox: {
     backgroundColor: "#f0fdf4",
     borderRadius: 10,

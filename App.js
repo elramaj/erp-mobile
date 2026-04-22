@@ -4,7 +4,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import { createStackNavigator } from "@react-navigation/stack";
 import { registerRootComponent } from "expo";
 import * as SplashScreen from "expo-splash-screen";
-import { useCallback, useEffect, useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Alert,
   Image,
@@ -168,12 +168,6 @@ function App() {
     }
   };
 
-  const onLayoutRootView = useCallback(async () => {
-    if (appReady) {
-      await SplashScreen.hideAsync();
-    }
-  }, [appReady]);
-
   const handleLoginSuccess = async () => {
     try {
       const userStr = await AsyncStorage.getItem("user");
@@ -191,18 +185,26 @@ function App() {
 
   if (!appReady) {
     return (
-      <View
-        style={{ flex: 1, backgroundColor: "#991b1b" }}
-        onLayout={onLayoutRootView}
-      >
+      <View style={{ flex: 1, backgroundColor: "#991b1b" }}>
         <StatusBar barStyle="light-content" backgroundColor="#991b1b" />
         <Image
           source={require("./assets/images/splash-icon.png")}
-          style={{ width: "100%", height: "100%", resizeMode: "cover" }}
+          style={{
+            position: "absolute",
+            top: 0,
+            left: 0,
+            right: 0,
+            bottom: 0,
+            width: "100%",
+            height: "100%",
+          }}
+          resizeMode="cover"
         />
       </View>
     );
   }
+
+  SplashScreen.hideAsync();
 
   return (
     <NavigationContainer>
