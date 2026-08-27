@@ -1,4 +1,5 @@
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { Ionicons } from "@expo/vector-icons";
+import { useCameraPermissions } from "expo-camera";
 import * as Location from "expo-location";
 import { useEffect, useRef, useState } from "react";
 import {
@@ -6,30 +7,23 @@ import {
   Alert,
   Image,
   Linking,
-  Modal,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import CameraCapture from "../components/absensi/CameraCapture";
+import TipePickerModal from "../components/absensi/TipePickerModal";
+import { getTipeIcon, getTipeLabel } from "../constants/absensi";
+import useLokasiAbsensi from "../hooks/useLokasiAbsensi";
 import api from "../services/api";
-
-const TIPE_ABSENSI = [
-  {
-    key: "masuk_kantor",
-    label: "🏢 Masuk Kantor",
-    desc: "Absen masuk di kantor",
-  },
-  { key: "visit", label: "🚗 Visit", desc: "Kunjungan ke lokasi" },
-  { key: "wfh", label: "🏠 WFH", desc: "Kerja dari rumah" },
-];
+import styles from "./AbsensiScreen.styles";
 
 export default function AbsensiScreen() {
   const [permission, requestPermission] = useCameraPermissions();
-  const [locationPermission, requestLocationPermission] =
-    Location.useForegroundPermissions();
+  const { koordinat, lokasiValid, jarakMeter, cekLokasi, bukaPeta } =
+    useLokasiAbsensi();
   const [absensi, setAbsensi] = useState(null);
   const [visitHariIni, setVisitHariIni] = useState([]);
   const [lokasiKantor, setLokasiKantor] = useState(null);
@@ -38,9 +32,6 @@ export default function AbsensiScreen() {
   const [showCamera, setShowCamera] = useState(false);
   const [mode, setMode] = useState(null);
   const [foto, setFoto] = useState(null);
-  const [lokasiValid, setLokasiValid] = useState(false);
-  const [jarakMeter, setJarakMeter] = useState(null);
-  const [koordinat, setKoordinat] = useState(null);
   const [tipeAbsensi, setTipeAbsensi] = useState("masuk_kantor");
   const [catatan, setCatatan] = useState("");
   const [namaTujuan, setNamaTujuan] = useState("");
@@ -69,41 +60,6 @@ export default function AbsensiScreen() {
     }
   };
 
-  const hitungJarak = (lat1, lon1, lat2, lon2) => {
-    const R = 6371000;
-    const dLat = ((lat2 - lat1) * Math.PI) / 180;
-    const dLon = ((lon2 - lon1) * Math.PI) / 180;
-    const a =
-      Math.sin(dLat / 2) ** 2 +
-      Math.cos((lat1 * Math.PI) / 180) *
-        Math.cos((lat2 * Math.PI) / 180) *
-        Math.sin(dLon / 2) ** 2;
-    return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
-  };
-
-  const cekLokasi = async () => {
-    if (!locationPermission?.granted) await requestLocationPermission();
-    try {
-      const loc = await Location.getCurrentPositionAsync({
-        accuracy: Location.Accuracy.High,
-      });
-      setKoordinat({ lat: loc.coords.latitude, lng: loc.coords.longitude });
-      const res = await api("/absensi/status");
-      if (res.lokasi_kantor) {
-        const jarak = hitungJarak(
-          loc.coords.latitude,
-          loc.coords.longitude,
-          res.lokasi_kantor.latitude,
-          res.lokasi_kantor.longitude,
-        );
-        setJarakMeter(Math.round(jarak));
-        setLokasiValid(jarak <= res.lokasi_kantor.radius_meter);
-      }
-    } catch (err) {
-      console.log("GPS error:", err);
-    }
-  };
-
   // ✅ FIX: tambah parameter tipe
   const bukaKamera = async (modeAbsen, visitId = null, tipe = null) => {
     if (!permission?.granted) await requestPermission();
@@ -126,13 +82,6 @@ export default function AbsensiScreen() {
     } catch (err) {
       Alert.alert("Error", "Gagal mengambil foto!");
     }
-  };
-
-  const bukaPeta = () => {
-    if (!koordinat) return;
-    Linking.openURL(
-      `https://www.google.com/maps?q=${koordinat.lat},${koordinat.lng}`,
-    );
   };
 
   const bukaPetaKantor = () => {
@@ -177,7 +126,7 @@ export default function AbsensiScreen() {
       const res = await api(endpoint, "POST", payload);
 
       if (res.success) {
-        Alert.alert("✅ Berhasil!", res.message);
+        Alert.alert("Berhasil!", res.message);
         setFoto(null);
         setMode(null);
         setCatatan("");
@@ -196,9 +145,6 @@ export default function AbsensiScreen() {
     }
   };
 
-  const getTipeLabel = (key) =>
-    TIPE_ABSENSI.find((t) => t.key === key)?.label ?? key;
-
   if (loading)
     return (
       <View style={styles.center}>
@@ -210,28 +156,12 @@ export default function AbsensiScreen() {
   // Kamera
   if (showCamera)
     return (
-      <View style={styles.cameraContainer}>
-        <CameraView ref={cameraRef} style={styles.camera} facing="front">
-          <View style={styles.cameraOverlay}>
-            <Text style={styles.cameraTitle}>
-              {mode === "checkin" ? "📸 Foto Check-In" : "📸 Foto Check-Out"}
-            </Text>
-            <View style={styles.faceGuide} />
-            <View style={styles.cameraButtons}>
-              <TouchableOpacity
-                style={styles.btnBatal}
-                onPress={() => setShowCamera(false)}
-              >
-                <Text style={styles.btnBatalText}>Batal</Text>
-              </TouchableOpacity>
-              <TouchableOpacity style={styles.btnShutter} onPress={ambilFoto}>
-                <View style={styles.shutterInner} />
-              </TouchableOpacity>
-              <View style={{ width: 70 }} />
-            </View>
-          </View>
-        </CameraView>
-      </View>
+      <CameraCapture
+        mode={mode}
+        cameraRef={cameraRef}
+        onCapture={ambilFoto}
+        onCancel={() => setShowCamera(false)}
+      />
     );
 
   // Preview Foto + Form
@@ -241,11 +171,12 @@ export default function AbsensiScreen() {
         style={styles.container}
         contentContainerStyle={{ padding: 20 }}
       >
-        <Text style={styles.sectionTitle}>
-          {mode === "checkin"
-            ? "✅ Konfirmasi Check-In"
-            : "✅ Konfirmasi Check-Out"}
-        </Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 4 }}>
+          <Ionicons name="checkmark-circle" size={22} color="#111827" />
+          <Text style={styles.sectionTitle}>
+            {mode === "checkin" ? "Konfirmasi Check-In" : "Konfirmasi Check-Out"}
+          </Text>
+        </View>
 
         <Image source={{ uri: foto.uri }} style={styles.previewFoto} />
 
@@ -254,10 +185,18 @@ export default function AbsensiScreen() {
           <View style={styles.card}>
             <Text style={styles.cardLabel}>Tipe Absensi *</Text>
             <TouchableOpacity
-              style={styles.tipePicker}
+              style={[
+                styles.tipePicker,
+                { flexDirection: "row", alignItems: "center", gap: 8 },
+              ]}
               onPress={() => setShowTipePicker(true)}
             >
-              <Text style={styles.tipePickerText}>
+              <Ionicons
+                name={getTipeIcon(tipeAbsensi)}
+                size={18}
+                color="#dc2626"
+              />
+              <Text style={[styles.tipePickerText, { flex: 1 }]}>
                 {getTipeLabel(tipeAbsensi)}
               </Text>
               <Text style={styles.tipePickerArrow}>▼</Text>
@@ -277,9 +216,12 @@ export default function AbsensiScreen() {
               },
             ]}
           >
-            <Text style={{ fontSize: 15, fontWeight: "700", color: "#7c3aed" }}>
-              🚗 Visit Baru
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+              <Ionicons name="car" size={18} color="#7c3aed" />
+              <Text style={{ fontSize: 15, fontWeight: "700", color: "#7c3aed" }}>
+                Visit Baru
+              </Text>
+            </View>
           </View>
         )}
 
@@ -320,7 +262,11 @@ export default function AbsensiScreen() {
             lokasiValid ? styles.lokasiValid : styles.lokasiInvalid,
           ]}
         >
-          <Text style={styles.lokasiIcon}>{lokasiValid ? "📍" : "⚠️"}</Text>
+          <Ionicons
+            name={lokasiValid ? "location" : "warning"}
+            size={24}
+            color={lokasiValid ? "#16a34a" : "#dc2626"}
+          />
           <View style={{ flex: 1 }}>
             <Text style={styles.lokasiTitle}>
               {lokasiValid ? "Dalam Area Kantor" : "Di Luar Area Kantor"}
@@ -331,18 +277,20 @@ export default function AbsensiScreen() {
             </Text>
           </View>
           {koordinat && (
-            <TouchableOpacity onPress={bukaPeta} style={styles.btnPeta}>
-              <Text style={styles.btnPetaText}>🗺️ Peta</Text>
+            <TouchableOpacity onPress={bukaPeta} style={[styles.btnPeta, { flexDirection: "row", alignItems: "center", gap: 4, justifyContent: "center" }]}>
+              <Ionicons name="map" size={14} color="white" />
+              <Text style={styles.btnPetaText}>Peta</Text>
             </TouchableOpacity>
           )}
         </View>
 
         <View style={styles.actionButtons}>
           <TouchableOpacity
-            style={styles.btnUlang}
+            style={[styles.btnUlang, { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }]}
             onPress={() => bukaKamera(mode, selectedVisitId, tipeAbsensi)}
           >
-            <Text style={styles.btnUlangText}>🔄 Ulangi Foto</Text>
+            <Ionicons name="camera-reverse" size={18} color="#dc2626" />
+            <Text style={styles.btnUlangText}>Ulangi Foto</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={[styles.btnSubmit, submitting && styles.btnDisabled]}
@@ -352,61 +300,26 @@ export default function AbsensiScreen() {
             {submitting ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.btnSubmitText}>
-                {mode === "checkin"
-                  ? "✅ Check-In Sekarang"
-                  : "✅ Check-Out Sekarang"}
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
+                <Ionicons name="checkmark-circle" size={18} color="white" />
+                <Text style={styles.btnSubmitText}>
+                  {mode === "checkin" ? "Check-In Sekarang" : "Check-Out Sekarang"}
+                </Text>
+              </View>
             )}
           </TouchableOpacity>
         </View>
 
         {/* Modal Pilih Tipe */}
-        <Modal visible={showTipePicker} transparent animationType="slide">
-          <View style={styles.modalOverlay}>
-            <View style={styles.modalCard}>
-              <Text style={styles.modalTitle}>Pilih Tipe Absensi</Text>
-              {TIPE_ABSENSI.map((t) => (
-                <TouchableOpacity
-                  key={t.key}
-                  style={[
-                    styles.tipeItem,
-                    tipeAbsensi === t.key && styles.tipeItemActive,
-                  ]}
-                  onPress={() => {
-                    setTipeAbsensi(t.key);
-                    setShowTipePicker(false);
-                  }}
-                >
-                  <Text
-                    style={[
-                      styles.tipeItemLabel,
-                      tipeAbsensi === t.key && { color: "white" },
-                    ]}
-                  >
-                    {t.label}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.tipeItemDesc,
-                      tipeAbsensi === t.key && {
-                        color: "rgba(255,255,255,0.8)",
-                      },
-                    ]}
-                  >
-                    {t.desc}
-                  </Text>
-                </TouchableOpacity>
-              ))}
-              <TouchableOpacity
-                style={styles.btnBatalModal}
-                onPress={() => setShowTipePicker(false)}
-              >
-                <Text style={styles.btnBatalModalText}>Batal</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </Modal>
+        <TipePickerModal
+          visible={showTipePicker}
+          tipeAbsensi={tipeAbsensi}
+          onSelect={(key) => {
+            setTipeAbsensi(key);
+            setShowTipePicker(false);
+          }}
+          onClose={() => setShowTipePicker(false)}
+        />
       </ScrollView>
     );
 
@@ -423,9 +336,16 @@ export default function AbsensiScreen() {
         activeOpacity={0.8}
       >
         <View style={{ flex: 1 }}>
-          <Text style={styles.lokasiHeaderText}>
-            {lokasiValid ? "📍 Dalam Area Kantor" : "⚠️ Di Luar Area Kantor"}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons
+              name={lokasiValid ? "location" : "warning"}
+              size={16}
+              color={lokasiValid ? "#16a34a" : "#dc2626"}
+            />
+            <Text style={styles.lokasiHeaderText}>
+              {lokasiValid ? "Dalam Area Kantor" : "Di Luar Area Kantor"}
+            </Text>
+          </View>
           {jarakMeter !== null && (
             <Text style={styles.lokasiHeaderSub}>
               Jarak: {jarakMeter}m · Tap untuk refresh
@@ -434,16 +354,18 @@ export default function AbsensiScreen() {
         </View>
         <View style={{ gap: 6 }}>
           {koordinat && (
-            <TouchableOpacity onPress={bukaPeta} style={styles.btnPetaKecil}>
-              <Text style={styles.btnPetaKecilText}>📍 Lokasiku</Text>
+            <TouchableOpacity onPress={bukaPeta} style={[styles.btnPetaKecil, { flexDirection: "row", alignItems: "center", gap: 4 }]}>
+              <Ionicons name="navigate" size={12} color="white" />
+              <Text style={styles.btnPetaKecilText}>Lokasiku</Text>
             </TouchableOpacity>
           )}
           {lokasiKantor && (
             <TouchableOpacity
               onPress={bukaPetaKantor}
-              style={[styles.btnPetaKecil, { backgroundColor: "#1d4ed8" }]}
+              style={[styles.btnPetaKecil, { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#1d4ed8" }]}
             >
-              <Text style={styles.btnPetaKecilText}>🏢 Kantor</Text>
+              <Ionicons name="business" size={12} color="white" />
+              <Text style={styles.btnPetaKecilText}>Kantor</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -451,7 +373,10 @@ export default function AbsensiScreen() {
 
       {/* Status Absensi Utama */}
       <View style={styles.card}>
-        <Text style={styles.cardTitle}>📅 Absensi Hari Ini</Text>
+        <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 }}>
+          <Ionicons name="calendar" size={18} color="#111827" />
+          <Text style={[styles.cardTitle, { marginBottom: 0 }]}>Absensi Hari Ini</Text>
+        </View>
         {absensi ? (
           <View>
             <View style={styles.statusRow}>
@@ -484,11 +409,29 @@ export default function AbsensiScreen() {
                       : styles.badgeDefault,
                 ]}
               >
+                <Ionicons
+                  name={
+                    absensi.status === "hadir"
+                      ? "checkmark-circle"
+                      : absensi.status === "terlambat"
+                        ? "time"
+                        : "ellipse"
+                  }
+                  size={13}
+                  color={
+                    absensi.status === "hadir"
+                      ? "#15803d"
+                      : absensi.status === "terlambat"
+                        ? "#b45309"
+                        : "#6b7280"
+                  }
+                  style={{ marginRight: 4 }}
+                />
                 <Text style={styles.badgeText}>
                   {absensi.status === "hadir"
-                    ? "✅ Hadir"
+                    ? "Hadir"
                     : absensi.status === "terlambat"
-                      ? "⏰ Terlambat"
+                      ? "Terlambat"
                       : absensi.status}
                 </Text>
               </View>
@@ -507,7 +450,10 @@ export default function AbsensiScreen() {
             style={styles.btnCheckin}
             onPress={() => bukaKamera("checkin", null, "masuk_kantor")}
           >
-            <Text style={styles.btnCheckinText}>📸 Check-In Sekarang</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <Ionicons name="camera" size={20} color="white" />
+              <Text style={styles.btnCheckinText}>Check-In Sekarang</Text>
+            </View>
             <Text style={styles.btnCheckinSub}>
               Ambil foto selfie untuk absen masuk
             </Text>
@@ -518,15 +464,21 @@ export default function AbsensiScreen() {
             style={styles.btnCheckout}
             onPress={() => bukaKamera("checkout", null, absensi.tipe)}
           >
-            <Text style={styles.btnCheckinText}>📸 Check-Out Sekarang</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+              <Ionicons name="camera" size={20} color="white" />
+              <Text style={styles.btnCheckinText}>Check-Out Sekarang</Text>
+            </View>
             <Text style={styles.btnCheckinSub}>
               Ambil foto selfie untuk absen pulang
             </Text>
           </TouchableOpacity>
         ) : (
           <View style={styles.selesaiCard}>
-            <Text style={styles.selesaiText}>✅ Absensi Selesai!</Text>
-            <Text style={styles.selesaiSub}>Sampai jumpa besok 👋</Text>
+            <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 6 }}>
+              <Ionicons name="checkmark-circle" size={20} color="#15803d" />
+              <Text style={styles.selesaiText}>Absensi Selesai!</Text>
+            </View>
+            <Text style={styles.selesaiSub}>Sampai jumpa besok</Text>
           </View>
         )}
       </View>
@@ -538,7 +490,10 @@ export default function AbsensiScreen() {
           style={styles.btnVisit}
           onPress={() => bukaKamera("checkin", null, "visit")}
         >
-          <Text style={styles.btnVisitText}>🚗 + Tambah Visit Baru</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Ionicons name="car" size={18} color="white" />
+            <Text style={styles.btnVisitText}>+ Tambah Visit Baru</Text>
+          </View>
           <Text style={styles.btnVisitSub}>
             {visitHariIni.length > 0
               ? `${visitHariIni.length} visit hari ini`
@@ -550,9 +505,12 @@ export default function AbsensiScreen() {
       {/* List Visit Hari Ini */}
       {visitHariIni.length > 0 && (
         <View style={styles.card}>
-          <Text style={styles.cardTitle}>
-            🚗 Visit Hari Ini ({visitHariIni.length}x)
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 16 }}>
+            <Ionicons name="car" size={18} color="#111827" />
+            <Text style={[styles.cardTitle, { marginBottom: 0 }]}>
+              Visit Hari Ini ({visitHariIni.length}x)
+            </Text>
+          </View>
           {visitHariIni.map((v, i) => (
             <View key={v.id} style={styles.visitItem}>
               <View style={styles.visitHeader}>
@@ -589,316 +547,3 @@ export default function AbsensiScreen() {
     </ScrollView>
   );
 }
-
-const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f9fafb" },
-  center: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    backgroundColor: "#f9fafb",
-  },
-  loadingText: { marginTop: 12, color: "#6b7280", fontSize: 14 },
-  cameraContainer: { flex: 1 },
-  camera: { flex: 1 },
-  cameraOverlay: {
-    flex: 1,
-    justifyContent: "space-between",
-    padding: 24,
-    paddingTop: 60,
-  },
-  cameraTitle: {
-    textAlign: "center",
-    color: "white",
-    fontSize: 18,
-    fontWeight: "700",
-    backgroundColor: "rgba(0,0,0,0.5)",
-    padding: 12,
-    borderRadius: 10,
-  },
-  faceGuide: {
-    width: 200,
-    height: 200,
-    borderWidth: 2,
-    borderColor: "white",
-    borderRadius: 100,
-    alignSelf: "center",
-    borderStyle: "dashed",
-  },
-  cameraButtons: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  btnBatal: {
-    backgroundColor: "rgba(0,0,0,0.5)",
-    padding: 12,
-    borderRadius: 10,
-    width: 70,
-  },
-  btnBatalText: { color: "white", textAlign: "center", fontWeight: "600" },
-  btnShutter: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
-    backgroundColor: "white",
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  shutterInner: {
-    width: 58,
-    height: 58,
-    borderRadius: 29,
-    backgroundColor: "#dc2626",
-  },
-  lokasiHeader: {
-    padding: 16,
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    margin: 16,
-    borderRadius: 14,
-    borderWidth: 1,
-  },
-  lokasiValid: { backgroundColor: "#f0fdf4", borderColor: "#86efac" },
-  lokasiInvalid: { backgroundColor: "#fef2f2", borderColor: "#fca5a5" },
-  lokasiHeaderText: { fontSize: 15, fontWeight: "700", color: "#111827" },
-  lokasiHeaderSub: { fontSize: 12, color: "#6b7280", marginTop: 2 },
-  btnPetaKecil: {
-    backgroundColor: "#dc2626",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  btnPetaKecilText: { color: "white", fontSize: 11, fontWeight: "700" },
-  card: {
-    backgroundColor: "white",
-    marginHorizontal: 16,
-    marginBottom: 12,
-    borderRadius: 16,
-    padding: 20,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.06,
-    shadowRadius: 8,
-    elevation: 2,
-  },
-  cardTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#111827",
-    marginBottom: 16,
-  },
-  cardLabel: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#4b5563",
-    marginBottom: 8,
-  },
-  statusRow: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
-  },
-  statusLabel: { fontSize: 14, color: "#6b7280" },
-  statusValue: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#111827",
-    flex: 1,
-    textAlign: "right",
-  },
-  badge: { paddingHorizontal: 12, paddingVertical: 4, borderRadius: 999 },
-  badgeHadir: { backgroundColor: "#dcfce7" },
-  badgeTerlambat: { backgroundColor: "#fef3c7" },
-  badgeDefault: { backgroundColor: "#f3f4f6" },
-  badgeText: { fontSize: 12, fontWeight: "600" },
-  belumAbsen: {
-    color: "#9ca3af",
-    fontSize: 14,
-    textAlign: "center",
-    paddingVertical: 12,
-  },
-  btnCheckin: {
-    backgroundColor: "#dc2626",
-    borderRadius: 16,
-    padding: 24,
-    alignItems: "center",
-    shadowColor: "#dc2626",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  btnCheckout: {
-    backgroundColor: "#0284c7",
-    borderRadius: 16,
-    padding: 24,
-    alignItems: "center",
-    shadowColor: "#0284c7",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  btnCheckinText: { color: "white", fontSize: 18, fontWeight: "800" },
-  btnCheckinSub: { color: "rgba(255,255,255,0.8)", fontSize: 12, marginTop: 4 },
-  selesaiCard: {
-    backgroundColor: "#f0fdf4",
-    borderRadius: 16,
-    padding: 24,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: "#86efac",
-  },
-  selesaiText: { fontSize: 18, fontWeight: "800", color: "#15803d" },
-  selesaiSub: { fontSize: 14, color: "#6b7280", marginTop: 4 },
-  btnVisit: {
-    backgroundColor: "#7c3aed",
-    borderRadius: 16,
-    padding: 20,
-    alignItems: "center",
-    shadowColor: "#7c3aed",
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.3,
-    shadowRadius: 8,
-    elevation: 4,
-  },
-  btnVisitText: { color: "white", fontSize: 16, fontWeight: "800" },
-  btnVisitSub: { color: "rgba(255,255,255,0.8)", fontSize: 12, marginTop: 4 },
-  visitItem: { paddingVertical: 12 },
-  visitHeader: { flexDirection: "row", alignItems: "flex-start", gap: 12 },
-  visitBadge: {
-    backgroundColor: "#7c3aed",
-    borderRadius: 999,
-    width: 28,
-    height: 28,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  visitBadgeText: { color: "white", fontSize: 12, fontWeight: "800" },
-  visitNama: { fontSize: 14, fontWeight: "700", color: "#111827" },
-  visitWaktu: { fontSize: 12, color: "#6b7280", marginTop: 2 },
-  visitCatatan: {
-    fontSize: 12,
-    color: "#9ca3af",
-    marginTop: 2,
-    fontStyle: "italic",
-  },
-  btnCheckoutVisit: {
-    backgroundColor: "#0284c7",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  btnCheckoutVisitText: { color: "white", fontSize: 11, fontWeight: "700" },
-  divider: { height: 1, backgroundColor: "#f3f4f6", marginTop: 8 },
-  sectionTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#111827",
-    marginBottom: 16,
-  },
-  previewFoto: {
-    width: "100%",
-    height: 260,
-    borderRadius: 16,
-    marginBottom: 16,
-  },
-  tipePicker: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    borderWidth: 1.5,
-    borderColor: "#e5e7eb",
-    borderRadius: 10,
-    padding: 14,
-    backgroundColor: "#f9fafb",
-  },
-  tipePickerText: { fontSize: 15, fontWeight: "600", color: "#111827" },
-  tipePickerArrow: { color: "#9ca3af", fontSize: 12 },
-  inputField: {
-    borderWidth: 1.5,
-    borderColor: "#e5e7eb",
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 14,
-    color: "#111827",
-    backgroundColor: "#f9fafb",
-  },
-  lokasiCard: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 16,
-    borderWidth: 1,
-  },
-  lokasiIcon: { fontSize: 24 },
-  lokasiTitle: { fontSize: 14, fontWeight: "700", color: "#111827" },
-  lokasiSub: { fontSize: 12, color: "#6b7280", marginTop: 2 },
-  btnPeta: {
-    backgroundColor: "#dc2626",
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-  },
-  btnPetaText: { color: "white", fontSize: 12, fontWeight: "700" },
-  actionButtons: { gap: 12 },
-  btnUlang: {
-    borderWidth: 1.5,
-    borderColor: "#dc2626",
-    borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
-  },
-  btnUlangText: { color: "#dc2626", fontSize: 15, fontWeight: "700" },
-  btnSubmit: {
-    backgroundColor: "#dc2626",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-  },
-  btnSubmitText: { color: "white", fontSize: 16, fontWeight: "700" },
-  btnDisabled: { opacity: 0.7 },
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  modalCard: {
-    backgroundColor: "white",
-    borderRadius: 24,
-    padding: 24,
-    margin: 16,
-    marginBottom: 32,
-    gap: 8,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#111827",
-    marginBottom: 8,
-  },
-  tipeItem: {
-    padding: 16,
-    borderRadius: 12,
-    borderWidth: 1.5,
-    borderColor: "#e5e7eb",
-  },
-  tipeItemActive: { backgroundColor: "#dc2626", borderColor: "#dc2626" },
-  tipeItemLabel: { fontSize: 15, fontWeight: "700", color: "#111827" },
-  tipeItemDesc: { fontSize: 12, color: "#6b7280", marginTop: 2 },
-  btnBatalModal: {
-    backgroundColor: "#f3f4f6",
-    borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
-    marginTop: 4,
-  },
-  btnBatalModalText: { fontSize: 15, fontWeight: "700", color: "#374151" },
-});

@@ -1,18 +1,20 @@
-import { CameraView, useCameraPermissions } from "expo-camera";
+import { Ionicons } from "@expo/vector-icons";
+import { useCameraPermissions } from "expo-camera";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Alert,
   FlatList,
-  Modal,
   ScrollView,
-  StyleSheet,
   Text,
   TextInput,
   TouchableOpacity,
   View,
 } from "react-native";
+import BarcodeScanner from "../components/gudang/BarcodeScanner";
+import ScanResultModal from "../components/gudang/ScanResultModal";
 import api from "../services/api";
+import styles from "./GudangScreen.styles";
 
 export default function GudangScreen() {
   const [permission, requestPermission] = useCameraPermissions();
@@ -86,14 +88,14 @@ export default function GudangScreen() {
       // Mode scan SN — langsung tambah ke list tanpa tutup kamera
       const sudahAda = formMasuk.serial_numbers.includes(data);
       if (sudahAda) {
-        Alert.alert("⚠️ Duplikat", `SN "${data}" sudah ada di list!`);
+        Alert.alert("Duplikat", `SN "${data}" sudah ada di list!`);
       } else {
         setFormMasuk((prev) => ({
           ...prev,
           serial_numbers: [...prev.serial_numbers, data],
         }));
         // Feedback singkat
-        Alert.alert("✅ SN Ditambahkan", `${data}`, [
+        Alert.alert("SN Ditambahkan", `${data}`, [
           {
             text: "Scan Lagi",
             onPress: () => {
@@ -129,7 +131,7 @@ export default function GudangScreen() {
   const tambahSNManual = () => {
     if (!snInput.trim()) return;
     if (formMasuk.serial_numbers.includes(snInput.trim())) {
-      Alert.alert("⚠️ Duplikat", "SN ini sudah ada di list!");
+      Alert.alert("Duplikat", "SN ini sudah ada di list!");
       return;
     }
     setFormMasuk((prev) => ({
@@ -177,7 +179,7 @@ export default function GudangScreen() {
       });
 
       if (res.success) {
-        Alert.alert("✅ Berhasil!", res.message);
+        Alert.alert("Berhasil!", res.message);
         setSelectedBarang(null);
         setFormMasuk({
           jumlah: "",
@@ -219,7 +221,7 @@ export default function GudangScreen() {
       });
 
       if (res.success) {
-        Alert.alert("✅ Berhasil!", res.message);
+        Alert.alert("Berhasil!", res.message);
         setSelectedBarang(null);
         setFormKeluar({
           jumlah: "",
@@ -250,18 +252,36 @@ export default function GudangScreen() {
   const renderList = () => (
     <View style={{ flex: 1 }}>
       <View style={styles.searchRow}>
-        <TextInput
-          style={[styles.searchInput, { flex: 1 }]}
-          placeholder="🔍 Cari nama atau kode barang..."
-          placeholderTextColor="#9ca3af"
-          value={search}
-          onChangeText={setSearch}
-        />
+        <View
+          style={[
+            styles.searchInput,
+            {
+              flex: 1,
+              flexDirection: "row",
+              alignItems: "center",
+              gap: 6,
+              paddingLeft: 10,
+            },
+          ]}
+        >
+          <Ionicons name="search-outline" size={16} color="#9ca3af" />
+          <TextInput
+            style={{ flex: 1, paddingVertical: 0 }}
+            placeholder="Cari nama atau kode barang..."
+            placeholderTextColor="#9ca3af"
+            value={search}
+            onChangeText={setSearch}
+          />
+        </View>
         <TouchableOpacity
-          style={styles.btnScanKecil}
+          style={[
+            styles.btnScanKecil,
+            { flexDirection: "row", alignItems: "center", gap: 4 },
+          ]}
           onPress={() => bukaScanner("cari")}
         >
-          <Text style={styles.btnScanKecilText}>📷 Scan</Text>
+          <Ionicons name="camera-outline" size={16} color="white" />
+          <Text style={styles.btnScanKecilText}>Scan</Text>
         </TouchableOpacity>
       </View>
       {loading ? (
@@ -280,7 +300,20 @@ export default function GudangScreen() {
                   {item.kode} · {item.kategori}
                 </Text>
                 {item.has_sn && (
-                  <Text style={styles.snBadge}>🔢 Serial Number</Text>
+                  <View
+                    style={{
+                      flexDirection: "row",
+                      alignItems: "center",
+                      gap: 4,
+                    }}
+                  >
+                    <Ionicons
+                      name="barcode-outline"
+                      size={12}
+                      color="#7c3aed"
+                    />
+                    <Text style={styles.snBadge}>Serial Number</Text>
+                  </View>
                 )}
               </View>
               <View style={styles.barangStok}>
@@ -330,7 +363,10 @@ export default function GudangScreen() {
   // ── Tab Stok Masuk ────────────────────────────────────
   const renderMasuk = () => (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-      <Text style={styles.formTitle}>📦 Catat Stok Masuk</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <Ionicons name="archive-outline" size={20} color="#111827" />
+        <Text style={[styles.formTitle, { marginBottom: 0 }]}>Catat Stok Masuk</Text>
+      </View>
 
       <Text style={styles.label}>Pilih Barang *</Text>
       <ScrollView
@@ -369,9 +405,12 @@ export default function GudangScreen() {
             Stok saat ini: {selectedBarang.stok} {selectedBarang.satuan}
           </Text>
           {selectedBarang.has_sn && (
-            <Text style={styles.snInfo}>
-              🔢 Barang ini memerlukan Serial Number
-            </Text>
+            <View style={{ flexDirection: "row", alignItems: "center", gap: 5 }}>
+              <Ionicons name="barcode-outline" size={13} color="#d97706" />
+              <Text style={styles.snInfo}>
+                Barang ini memerlukan Serial Number
+              </Text>
+            </View>
           )}
         </View>
       )}
@@ -414,10 +453,14 @@ export default function GudangScreen() {
             </Text>
             {/* Tombol Scan SN */}
             <TouchableOpacity
-              style={styles.btnScanSN}
+              style={[
+                styles.btnScanSN,
+                { flexDirection: "row", alignItems: "center", gap: 4 },
+              ]}
               onPress={() => bukaScanner("sn")}
             >
-              <Text style={styles.btnScanSNText}>📷 Scan SN</Text>
+              <Ionicons name="camera-outline" size={14} color="white" />
+              <Text style={styles.btnScanSNText}>Scan SN</Text>
             </TouchableOpacity>
           </View>
 
@@ -450,9 +493,7 @@ export default function GudangScreen() {
                     onPress={() => hapusSN(i)}
                     style={styles.snHapus}
                   >
-                    <Text style={{ color: "#dc2626", fontWeight: "700" }}>
-                      ✕
-                    </Text>
+                    <Ionicons name="close" size={16} color="#dc2626" />
                   </TouchableOpacity>
                 </View>
               ))}
@@ -474,12 +515,14 @@ export default function GudangScreen() {
                   },
                 ]}
               />
-              <Text style={styles.progressText}>
-                {formMasuk.serial_numbers.length}/{formMasuk.jumlah} SN
-                {formMasuk.serial_numbers.length == formMasuk.jumlah
-                  ? " ✅"
-                  : ""}
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 4 }}>
+                <Text style={styles.progressText}>
+                  {formMasuk.serial_numbers.length}/{formMasuk.jumlah} SN
+                </Text>
+                {formMasuk.serial_numbers.length == formMasuk.jumlah && (
+                  <Ionicons name="checkmark-circle" size={14} color="#16a34a" />
+                )}
+              </View>
             </View>
           )}
         </View>
@@ -493,7 +536,10 @@ export default function GudangScreen() {
         {submitting ? (
           <ActivityIndicator color="white" />
         ) : (
-          <Text style={styles.btnSubmitText}>💾 Simpan Stok Masuk</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons name="save-outline" size={16} color="white" />
+            <Text style={styles.btnSubmitText}>Simpan Stok Masuk</Text>
+          </View>
         )}
       </TouchableOpacity>
     </ScrollView>
@@ -502,7 +548,10 @@ export default function GudangScreen() {
   // ── Tab Stok Keluar ───────────────────────────────────
   const renderKeluar = () => (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-      <Text style={styles.formTitle}>📤 Catat Stok Keluar</Text>
+      <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 12 }}>
+        <Ionicons name="arrow-redo-outline" size={20} color="#111827" />
+        <Text style={[styles.formTitle, { marginBottom: 0 }]}>Catat Stok Keluar</Text>
+      </View>
 
       <Text style={styles.label}>Pilih Barang *</Text>
       <ScrollView
@@ -585,7 +634,10 @@ export default function GudangScreen() {
         {submitting ? (
           <ActivityIndicator color="white" />
         ) : (
-          <Text style={styles.btnSubmitText}>💾 Simpan Stok Keluar</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 6 }}>
+            <Ionicons name="save-outline" size={16} color="white" />
+            <Text style={styles.btnSubmitText}>Simpan Stok Keluar</Text>
+          </View>
         )}
       </TouchableOpacity>
     </ScrollView>
@@ -596,18 +648,27 @@ export default function GudangScreen() {
       {/* Tab Bar */}
       <View style={styles.tabBar}>
         {[
-          { key: "list", label: "📋 Stok" },
-          { key: "masuk", label: "📦 Masuk" },
-          { key: "keluar", label: "📤 Keluar" },
+          { key: "list", label: "Stok", icon: "cube-outline" },
+          { key: "masuk", label: "Masuk", icon: "arrow-down-circle-outline" },
+          { key: "keluar", label: "Keluar", icon: "arrow-up-circle-outline" },
         ].map((t) => (
           <TouchableOpacity
             key={t.key}
-            style={[styles.tabItem, tab === t.key && styles.tabActive]}
+            style={[
+              styles.tabItem,
+              { flexDirection: "row", alignItems: "center", gap: 6, justifyContent: "center" },
+              tab === t.key && styles.tabActive,
+            ]}
             onPress={() => {
               setTab(t.key);
               setSelectedBarang(null);
             }}
           >
+            <Ionicons
+              name={t.icon}
+              size={16}
+              color={tab === t.key ? "#dc2626" : "#6b7280"}
+            />
             <Text
               style={[styles.tabText, tab === t.key && styles.tabTextActive]}
             >
@@ -622,418 +683,26 @@ export default function GudangScreen() {
       {tab === "keluar" && renderKeluar()}
 
       {/* Modal Scanner Kamera */}
-      <Modal visible={showScanModal} animationType="slide">
-        <View style={{ flex: 1, backgroundColor: "black" }}>
-          <CameraView
-            style={{ flex: 1 }}
-            onBarcodeScanned={handleScan}
-            barcodeScannerSettings={{
-              barcodeTypes: ["qr", "code128", "code39", "ean13", "ean8"],
-            }}
-          >
-            <View style={styles.scanOverlay}>
-              <View style={styles.scanTopBar}>
-                <Text style={styles.scanTitle}>
-                  {scanMode === "sn"
-                    ? "🔢 Scan Serial Number"
-                    : "🔍 Scan Kode Barang"}
-                </Text>
-                {scanMode === "sn" && formMasuk.serial_numbers.length > 0 && (
-                  <Text style={styles.scanCounter}>
-                    {formMasuk.serial_numbers.length} SN terscan
-                  </Text>
-                )}
-              </View>
-
-              <View style={styles.scanFrame}>
-                {/* Corner indicators */}
-                <View style={[styles.corner, styles.cornerTL]} />
-                <View style={[styles.corner, styles.cornerTR]} />
-                <View style={[styles.corner, styles.cornerBL]} />
-                <View style={[styles.corner, styles.cornerBR]} />
-              </View>
-
-              <Text style={styles.scanHint}>
-                {scanMode === "sn"
-                  ? "Arahkan ke barcode/QR pada barang"
-                  : "Arahkan ke kode barang"}
-              </Text>
-
-              <TouchableOpacity
-                style={styles.btnTutupScan}
-                onPress={() => {
-                  setShowScanModal(false);
-                  setScanning(false);
-                }}
-              >
-                <Text style={styles.btnTutupScanText}>
-                  {scanMode === "sn" && formMasuk.serial_numbers.length > 0
-                    ? `✅ Selesai (${formMasuk.serial_numbers.length} SN)`
-                    : "✕ Tutup"}
-                </Text>
-              </TouchableOpacity>
-            </View>
-          </CameraView>
-        </View>
-      </Modal>
+      <BarcodeScanner
+        visible={showScanModal}
+        scanMode={scanMode}
+        snCount={formMasuk.serial_numbers.length}
+        onScan={handleScan}
+        onClose={() => {
+          setShowScanModal(false);
+          setScanning(false);
+        }}
+      />
 
       {/* Modal Hasil Scan Cari */}
-      <Modal visible={showResultModal} transparent animationType="slide">
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalCard}>
-            {scanResult?.success ? (
-              <>
-                <Text style={styles.modalTitle}>
-                  {scanResult.type === "serial_number"
-                    ? "🔢 Serial Number!"
-                    : "📦 Barang Ditemukan!"}
-                </Text>
-                {scanResult.type === "serial_number" ? (
-                  <View>
-                    <Text style={styles.modalItem}>
-                      SN:{" "}
-                      <Text style={styles.modalValue}>
-                        {scanResult.data.sn}
-                      </Text>
-                    </Text>
-                    <Text style={styles.modalItem}>
-                      Barang:{" "}
-                      <Text style={styles.modalValue}>
-                        {scanResult.data.nama_barang}
-                      </Text>
-                    </Text>
-                    <Text style={styles.modalItem}>
-                      Status:{" "}
-                      <Text
-                        style={[
-                          styles.modalValue,
-                          {
-                            color:
-                              scanResult.data.status === "tersedia"
-                                ? "#16a34a"
-                                : "#dc2626",
-                          },
-                        ]}
-                      >
-                        {scanResult.data.status}
-                      </Text>
-                    </Text>
-                  </View>
-                ) : (
-                  <View>
-                    <Text style={styles.modalItem}>
-                      Kode:{" "}
-                      <Text style={styles.modalValue}>
-                        {scanResult.data.kode}
-                      </Text>
-                    </Text>
-                    <Text style={styles.modalItem}>
-                      Nama:{" "}
-                      <Text style={styles.modalValue}>
-                        {scanResult.data.nama}
-                      </Text>
-                    </Text>
-                    <Text style={styles.modalItem}>
-                      Stok:{" "}
-                      <Text style={styles.modalValue}>
-                        {scanResult.data.stok} {scanResult.data.satuan}
-                      </Text>
-                    </Text>
-                  </View>
-                )}
-              </>
-            ) : (
-              <>
-                <Text style={styles.modalTitle}>❌ Tidak Ditemukan</Text>
-                <Text style={styles.modalItem}>{scanResult?.message}</Text>
-              </>
-            )}
-            <TouchableOpacity
-              style={styles.btnTutup}
-              onPress={() => {
-                setShowResultModal(false);
-                setScanResult(null);
-              }}
-            >
-              <Text style={styles.btnTutupText}>Tutup</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-      </Modal>
+      <ScanResultModal
+        visible={showResultModal}
+        scanResult={scanResult}
+        onClose={() => {
+          setShowResultModal(false);
+          setScanResult(null);
+        }}
+      />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  center: { flex: 1, justifyContent: "center", alignItems: "center" },
-
-  // Tab
-  tabBar: {
-    flexDirection: "row",
-    backgroundColor: "white",
-    borderBottomWidth: 1,
-    borderBottomColor: "#f3f4f6",
-  },
-  tabItem: { flex: 1, paddingVertical: 12, alignItems: "center" },
-  tabActive: { borderBottomWidth: 2, borderBottomColor: "#dc2626" },
-  tabText: { fontSize: 12, color: "#9ca3af", fontWeight: "600" },
-  tabTextActive: { color: "#dc2626" },
-
-  // List
-  searchRow: { flexDirection: "row", gap: 8, margin: 16, alignItems: "center" },
-  searchInput: {
-    borderWidth: 1.5,
-    borderColor: "#e5e7eb",
-    borderRadius: 10,
-    padding: 12,
-    fontSize: 14,
-    backgroundColor: "white",
-    color: "#111827",
-  },
-  btnScanKecil: { backgroundColor: "#dc2626", borderRadius: 10, padding: 12 },
-  btnScanKecilText: { color: "white", fontWeight: "700", fontSize: 13 },
-  barangCard: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 16,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
-  },
-  barangInfo: { flex: 1 },
-  barangNama: { fontSize: 15, fontWeight: "700", color: "#111827" },
-  barangKode: { fontSize: 12, color: "#9ca3af", marginTop: 2 },
-  snBadge: { fontSize: 11, color: "#7c3aed", marginTop: 4 },
-  barangStok: { alignItems: "center" },
-  stokAngka: { fontSize: 24, fontWeight: "800" },
-  stokSatuan: { fontSize: 11, color: "#9ca3af" },
-  stokBadge: {
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 999,
-    marginTop: 4,
-  },
-  badgeAman: { backgroundColor: "#dcfce7" },
-  badgeMenipis: { backgroundColor: "#fef3c7" },
-  badgeHabis: { backgroundColor: "#fee2e2" },
-  stokBadgeText: { fontSize: 10, fontWeight: "700" },
-  emptyText: { textAlign: "center", color: "#9ca3af", marginTop: 40 },
-
-  // Form
-  formTitle: {
-    fontSize: 20,
-    fontWeight: "800",
-    color: "#111827",
-    marginBottom: 20,
-  },
-  label: { fontSize: 13, fontWeight: "600", color: "#4b5563", marginBottom: 8 },
-  input: {
-    borderWidth: 1.5,
-    borderColor: "#e5e7eb",
-    borderRadius: 10,
-    padding: 14,
-    fontSize: 14,
-    color: "#111827",
-    backgroundColor: "white",
-    marginBottom: 16,
-  },
-  barangChip: {
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-    borderRadius: 999,
-    borderWidth: 1.5,
-    borderColor: "#e5e7eb",
-    backgroundColor: "white",
-    marginRight: 8,
-  },
-  barangChipActive: { backgroundColor: "#dc2626", borderColor: "#dc2626" },
-  barangChipText: { fontSize: 13, fontWeight: "600", color: "#374151" },
-  selectedCard: {
-    backgroundColor: "#fef2f2",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#fca5a5",
-  },
-  selectedNama: { fontSize: 16, fontWeight: "700", color: "#111827" },
-  selectedInfo: { fontSize: 13, color: "#6b7280", marginTop: 4 },
-  snInfo: { fontSize: 12, color: "#d97706", marginTop: 6 },
-
-  // SN Section
-  snSection: {
-    backgroundColor: "#f8fafc",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    borderWidth: 1,
-    borderColor: "#e2e8f0",
-  },
-  snHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 12,
-  },
-  btnScanSN: {
-    backgroundColor: "#dc2626",
-    borderRadius: 8,
-    paddingHorizontal: 14,
-    paddingVertical: 8,
-  },
-  btnScanSNText: { color: "white", fontWeight: "700", fontSize: 13 },
-  snInputRow: { flexDirection: "row", gap: 8, marginBottom: 12 },
-  btnTambahSN: {
-    backgroundColor: "#374151",
-    borderRadius: 10,
-    padding: 14,
-    justifyContent: "center",
-  },
-  btnTambahSNText: { color: "white", fontWeight: "700", fontSize: 13 },
-  snList: { gap: 6, marginBottom: 12 },
-  snItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "white",
-    borderRadius: 8,
-    padding: 10,
-    borderWidth: 1,
-    borderColor: "#e5e7eb",
-  },
-  snNomor: {
-    fontSize: 12,
-    color: "#9ca3af",
-    marginRight: 8,
-    fontWeight: "700",
-  },
-  snText: { flex: 1, fontSize: 13, color: "#374151", fontWeight: "600" },
-  snHapus: { paddingHorizontal: 8 },
-  progressContainer: {
-    backgroundColor: "#e5e7eb",
-    borderRadius: 999,
-    height: 6,
-    overflow: "hidden",
-    marginBottom: 8,
-  },
-  progressBar: { height: 6, borderRadius: 999 },
-  progressText: {
-    fontSize: 12,
-    color: "#6b7280",
-    textAlign: "center",
-    marginTop: 4,
-  },
-
-  // Scanner
-  scanOverlay: {
-    flex: 1,
-    justifyContent: "space-between",
-    padding: 24,
-    paddingTop: 60,
-  },
-  scanTopBar: { alignItems: "center", gap: 8 },
-  scanTitle: {
-    color: "white",
-    fontSize: 16,
-    fontWeight: "700",
-    backgroundColor: "rgba(0,0,0,0.6)",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    borderRadius: 10,
-    textAlign: "center",
-  },
-  scanCounter: {
-    color: "white",
-    fontSize: 13,
-    backgroundColor: "#dc2626",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 999,
-    fontWeight: "700",
-  },
-  scanFrame: {
-    width: 240,
-    height: 240,
-    alignSelf: "center",
-    position: "relative",
-  },
-  corner: {
-    position: "absolute",
-    width: 24,
-    height: 24,
-    borderColor: "#dc2626",
-    borderWidth: 3,
-  },
-  cornerTL: { top: 0, left: 0, borderRightWidth: 0, borderBottomWidth: 0 },
-  cornerTR: { top: 0, right: 0, borderLeftWidth: 0, borderBottomWidth: 0 },
-  cornerBL: { bottom: 0, left: 0, borderRightWidth: 0, borderTopWidth: 0 },
-  cornerBR: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0 },
-  scanHint: {
-    color: "white",
-    fontSize: 13,
-    textAlign: "center",
-    backgroundColor: "rgba(0,0,0,0.6)",
-    padding: 10,
-    borderRadius: 10,
-  },
-  btnTutupScan: {
-    backgroundColor: "white",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    marginBottom: 16,
-  },
-  btnTutupScanText: { color: "#111827", fontSize: 15, fontWeight: "700" },
-
-  // Submit
-  btnSubmit: {
-    backgroundColor: "#dc2626",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  btnSubmitKeluar: {
-    backgroundColor: "#0284c7",
-    borderRadius: 12,
-    padding: 16,
-    alignItems: "center",
-    marginTop: 8,
-  },
-  btnSubmitText: { color: "white", fontSize: 16, fontWeight: "700" },
-  btnDisabled: { opacity: 0.7 },
-
-  // Modal hasil scan
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: "rgba(0,0,0,0.5)",
-    justifyContent: "flex-end",
-  },
-  modalCard: {
-    backgroundColor: "white",
-    borderRadius: 24,
-    padding: 24,
-    margin: 16,
-    marginBottom: 32,
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: "800",
-    color: "#111827",
-    marginBottom: 16,
-  },
-  modalItem: { fontSize: 14, color: "#6b7280", marginBottom: 8 },
-  modalValue: { fontWeight: "700", color: "#111827" },
-  btnTutup: {
-    backgroundColor: "#f3f4f6",
-    borderRadius: 12,
-    padding: 14,
-    alignItems: "center",
-    marginTop: 16,
-  },
-  btnTutupText: { fontSize: 15, fontWeight: "700", color: "#374151" },
-});

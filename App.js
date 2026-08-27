@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { NavigationContainer } from "@react-navigation/native";
@@ -13,6 +14,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
+import { SafeAreaProvider, useSafeAreaInsets } from "react-native-safe-area-context";
 
 import AbsensiScreen from "./src/screens/AbsensiScreen";
 import GudangScreen from "./src/screens/GudangScreen";
@@ -83,6 +85,7 @@ function LogoutButton({ onLogout }) {
 
 function MainTabs({ onLogout, user }) {
   const bisaAksesGudang = user && ROLE_GUDANG.includes(Number(user.role_id));
+  const insets = useSafeAreaInsets();
 
   return (
     <Tab.Navigator
@@ -93,9 +96,9 @@ function MainTabs({ onLogout, user }) {
           backgroundColor: "white",
           borderTopWidth: 1,
           borderTopColor: "#f3f4f6",
-          paddingBottom: 8,
+          paddingBottom: 8 + insets.bottom,
           paddingTop: 8,
-          height: 64,
+          height: 64 + insets.bottom,
         },
         tabBarLabelStyle: { fontSize: 12, fontWeight: "600" },
         headerStyle: { backgroundColor: "#dc2626" },
@@ -108,9 +111,13 @@ function MainTabs({ onLogout, user }) {
         name="Absensi"
         component={AbsensiScreen}
         options={{
-          headerTitle: () => <HeaderTitle user={user} title="🕐 Absensi" />,
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 22, color }}>🕐</Text>
+          headerTitle: () => <HeaderTitle user={user} title="Absensi" />,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "time" : "time-outline"}
+              size={22}
+              color={color}
+            />
           ),
           tabBarLabel: "Absensi",
         }}
@@ -119,9 +126,13 @@ function MainTabs({ onLogout, user }) {
         name="Izin"
         component={IzinScreen}
         options={{
-          headerTitle: () => <HeaderTitle user={user} title="📋 Izin / Cuti" />,
-          tabBarIcon: ({ color }) => (
-            <Text style={{ fontSize: 22, color }}>📋</Text>
+          headerTitle: () => <HeaderTitle user={user} title="Izin / Cuti" />,
+          tabBarIcon: ({ color, focused }) => (
+            <Ionicons
+              name={focused ? "document-text" : "document-text-outline"}
+              size={22}
+              color={color}
+            />
           ),
           tabBarLabel: "Izin",
         }}
@@ -131,9 +142,13 @@ function MainTabs({ onLogout, user }) {
           name="Gudang"
           component={GudangScreen}
           options={{
-            headerTitle: () => <HeaderTitle user={user} title="🏭 Gudang" />,
-            tabBarIcon: ({ color }) => (
-              <Text style={{ fontSize: 22, color }}>🏭</Text>
+            headerTitle: () => <HeaderTitle user={user} title="Gudang" />,
+            tabBarIcon: ({ color, focused }) => (
+              <Ionicons
+                name={focused ? "cube" : "cube-outline"}
+                size={22}
+                color={color}
+              />
             ),
             tabBarLabel: "Gudang",
           }}
@@ -207,19 +222,21 @@ function App() {
   SplashScreen.hideAsync();
 
   return (
-    <NavigationContainer>
-      <Stack.Navigator screenOptions={{ headerShown: false }}>
-        {isLoggedIn ? (
-          <Stack.Screen name="Main">
-            {() => <MainTabs onLogout={handleLogout} user={user} />}
-          </Stack.Screen>
-        ) : (
-          <Stack.Screen name="Login">
-            {() => <LoginScreen onLoginSuccess={handleLoginSuccess} />}
-          </Stack.Screen>
-        )}
-      </Stack.Navigator>
-    </NavigationContainer>
+    <SafeAreaProvider>
+      <NavigationContainer>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          {isLoggedIn ? (
+            <Stack.Screen name="Main">
+              {() => <MainTabs onLogout={handleLogout} user={user} />}
+            </Stack.Screen>
+          ) : (
+            <Stack.Screen name="Login">
+              {() => <LoginScreen onLoginSuccess={handleLoginSuccess} />}
+            </Stack.Screen>
+          )}
+        </Stack.Navigator>
+      </NavigationContainer>
+    </SafeAreaProvider>
   );
 }
 
