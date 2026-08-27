@@ -1,92 +1,65 @@
-import { Ionicons } from "@expo/vector-icons";
+import { CameraView } from "expo-camera";
 import { Modal, Text, TouchableOpacity, View } from "react-native";
 import styles from "../../screens/GudangScreen.styles";
 
-// Popup yang muncul setelah scan mode "cari barang" — nunjukin detail
-// barang atau serial number yang ketemu, atau pesan kalau nggak ketemu.
-export default function ScanResultModal({ visible, scanResult, onClose }) {
+// Layar full-screen kamera buat scan barcode/QR code barang atau serial number.
+export default function BarcodeScanner({
+  visible,
+  scanMode,
+  snCount,
+  onScan,
+  onClose,
+}) {
+  // Jangan mount CameraView kalau modal lagi ditutup, biar kamera nggak
+  // "dipegang" terus-terusan di background dan bentrok sama komponen kamera lain.
+  if (!visible) return null;
+
   return (
-    <Modal visible={visible} transparent animationType="slide">
-      <View style={styles.modalOverlay}>
-        <View style={styles.modalCard}>
-          {scanResult?.success ? (
-            <>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <Ionicons
-                  name={
-                    scanResult.type === "serial_number"
-                      ? "barcode-outline"
-                      : "cube-outline"
-                  }
-                  size={22}
-                  color="#16a34a"
-                />
-                <Text style={[styles.modalTitle, { marginBottom: 0 }]}>
-                  {scanResult.type === "serial_number"
-                    ? "Serial Number!"
-                    : "Barang Ditemukan!"}
-                </Text>
-              </View>
-              {scanResult.type === "serial_number" ? (
-                <View>
-                  <Text style={styles.modalItem}>
-                    SN: <Text style={styles.modalValue}>{scanResult.data.sn}</Text>
-                  </Text>
-                  <Text style={styles.modalItem}>
-                    Barang:{" "}
-                    <Text style={styles.modalValue}>
-                      {scanResult.data.nama_barang}
-                    </Text>
-                  </Text>
-                  <Text style={styles.modalItem}>
-                    Status:{" "}
-                    <Text
-                      style={[
-                        styles.modalValue,
-                        {
-                          color:
-                            scanResult.data.status === "tersedia"
-                              ? "#16a34a"
-                              : "#dc2626",
-                        },
-                      ]}
-                    >
-                      {scanResult.data.status}
-                    </Text>
-                  </Text>
-                </View>
-              ) : (
-                <View>
-                  <Text style={styles.modalItem}>
-                    Kode:{" "}
-                    <Text style={styles.modalValue}>{scanResult.data.kode}</Text>
-                  </Text>
-                  <Text style={styles.modalItem}>
-                    Nama:{" "}
-                    <Text style={styles.modalValue}>{scanResult.data.nama}</Text>
-                  </Text>
-                  <Text style={styles.modalItem}>
-                    Stok:{" "}
-                    <Text style={styles.modalValue}>
-                      {scanResult.data.stok} {scanResult.data.satuan}
-                    </Text>
-                  </Text>
-                </View>
+    <Modal visible={visible} animationType="slide" statusBarTranslucent>
+      <View style={{ flex: 1, backgroundColor: "black" }}>
+        <CameraView
+          style={{ flex: 1 }}
+          facing="back"
+          onBarcodeScanned={onScan}
+          barcodeScannerSettings={{
+            barcodeTypes: [
+              "qr",
+              "code128",
+              "code39",
+              "ean13",
+              "ean8",
+              "upc_a",
+              "upc_e",
+            ],
+          }}
+        >
+          <View style={styles.scanOverlay}>
+            <View style={styles.scanTopBar}>
+              <Text style={styles.scanTitle}>
+                {scanMode === "sn" ? "Scan Serial Number" : "Scan Kode Barang"}
+              </Text>
+              {scanMode === "sn" && (
+                <Text style={styles.scanCounter}>{snCount} SN ditambahkan</Text>
               )}
-            </>
-          ) : (
-            <>
-              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
-                <Ionicons name="close-circle" size={22} color="#dc2626" />
-                <Text style={[styles.modalTitle, { marginBottom: 0 }]}>Tidak Ditemukan</Text>
-              </View>
-              <Text style={styles.modalItem}>{scanResult?.message}</Text>
-            </>
-          )}
-          <TouchableOpacity style={styles.btnTutup} onPress={onClose}>
-            <Text style={styles.btnTutupText}>Tutup</Text>
-          </TouchableOpacity>
-        </View>
+            </View>
+
+            <View style={styles.scanFrame}>
+              <View style={[styles.corner, styles.cornerTL]} />
+              <View style={[styles.corner, styles.cornerTR]} />
+              <View style={[styles.corner, styles.cornerBL]} />
+              <View style={[styles.corner, styles.cornerBR]} />
+            </View>
+
+            <View>
+              <Text style={styles.scanHint}>
+                Arahkan kamera ke barcode atau QR code
+              </Text>
+              <TouchableOpacity style={styles.btnTutupScan} onPress={onClose}>
+                <Text style={styles.btnTutupScanText}>Tutup</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </CameraView>
       </View>
     </Modal>
   );

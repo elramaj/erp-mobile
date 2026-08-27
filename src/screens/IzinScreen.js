@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,7 +13,7 @@ import {
 } from "react-native";
 import AttachSourcePicker from "../components/izin/AttachSourcePicker";
 import JenisIzinPicker from "../components/izin/JenisIzinPicker";
-import { JENIS_IZIN, STATUS_COLOR } from "../constants/izin";
+import { getJenisIcon, JENIS_IZIN, STATUS_COLOR } from "../constants/izin";
 import useAttachments from "../hooks/useAttachments";
 import api from "../services/api";
 import styles from "./IzinScreen.styles";
@@ -97,7 +98,7 @@ export default function IzinScreen() {
 
       const res = await api("/izin", "POST", formData, true); // true = multipart
       if (res.success) {
-        Alert.alert("✅ Berhasil!", res.message, [
+        Alert.alert("Berhasil!", res.message, [
           {
             text: "OK",
             onPress: () => {
@@ -144,15 +145,28 @@ export default function IzinScreen() {
             return (
               <View style={styles.izinCard}>
                 <View style={styles.izinHeader}>
-                  <Text style={styles.izinJenis}>
-                    {getJenisLabel(item.jenis)}
-                  </Text>
+                  <View style={styles.izinJenisRow}>
+                    <Ionicons
+                      name={getJenisIcon(item.jenis)}
+                      size={16}
+                      color="#374151"
+                    />
+                    <Text style={styles.izinJenis}>
+                      {getJenisLabel(item.jenis)}
+                    </Text>
+                  </View>
                   <View
                     style={[
                       styles.statusBadge,
                       { backgroundColor: statusInfo.bg },
                     ]}
                   >
+                    <Ionicons
+                      name={statusInfo.icon}
+                      size={12}
+                      color={statusInfo.text}
+                      style={{ marginRight: 4 }}
+                    />
                     <Text
                       style={[styles.statusText, { color: statusInfo.text }]}
                     >
@@ -160,9 +174,14 @@ export default function IzinScreen() {
                     </Text>
                   </View>
                 </View>
-                <View style={styles.izinTanggal}>
+                <View style={styles.izinTanggalRow}>
+                  <Ionicons
+                    name="calendar-outline"
+                    size={13}
+                    color="#6b7280"
+                  />
                   <Text style={styles.izinTanggalText}>
-                    📅 {item.tanggal_mulai}
+                    {item.tanggal_mulai}
                     {item.tanggal_mulai !== item.tanggal_selesai
                       ? ` s/d ${item.tanggal_selesai}`
                       : ""}
@@ -173,8 +192,13 @@ export default function IzinScreen() {
                 </Text>
                 {item.attachments?.length > 0 && (
                   <View style={styles.attachmentInfo}>
+                    <Ionicons
+                      name="attach-outline"
+                      size={13}
+                      color="#15803d"
+                    />
                     <Text style={styles.attachmentInfoText}>
-                      📎 {item.attachments.length} lampiran
+                      {item.attachments.length} lampiran
                     </Text>
                   </View>
                 )}
@@ -194,7 +218,7 @@ export default function IzinScreen() {
           contentContainerStyle={{ padding: 16, gap: 12 }}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Text style={styles.emptyIcon}>📋</Text>
+              <Ionicons name="document-text-outline" size={44} color="#d1d5db" />
               <Text style={styles.emptyText}>Belum ada riwayat izin</Text>
               <TouchableOpacity
                 style={styles.btnAjukanEmpty}
@@ -215,7 +239,12 @@ export default function IzinScreen() {
 
   const renderAjukan = () => (
     <ScrollView style={{ flex: 1 }} contentContainerStyle={{ padding: 16 }}>
-      <Text style={styles.formTitle}>📝 Ajukan Izin / Sakit / Cuti</Text>
+      <View style={styles.formTitleRow}>
+        <Ionicons name="create-outline" size={20} color="#111827" />
+        <Text style={[styles.formTitle, { marginBottom: 0 }]}>
+          Ajukan Izin / Sakit / Cuti
+        </Text>
+      </View>
 
       {/* Jenis */}
       <Text style={styles.label}>Jenis Pengajuan *</Text>
@@ -223,8 +252,15 @@ export default function IzinScreen() {
         style={styles.picker}
         onPress={() => setShowJenisPicker(true)}
       >
-        <Text style={styles.pickerText}>{getJenisLabel(form.jenis)}</Text>
-        <Text style={styles.pickerArrow}>▼</Text>
+        <View style={styles.pickerValueRow}>
+          <Ionicons
+            name={getJenisIcon(form.jenis)}
+            size={17}
+            color="#dc2626"
+          />
+          <Text style={styles.pickerText}>{getJenisLabel(form.jenis)}</Text>
+        </View>
+        <Ionicons name="chevron-down" size={16} color="#9ca3af" />
       </TouchableOpacity>
 
       {/* Tanggal Mulai */}
@@ -252,8 +288,9 @@ export default function IzinScreen() {
       {/* Durasi */}
       {form.tanggal_mulai && form.tanggal_selesai && (
         <View style={styles.durasiCard}>
+          <Ionicons name="calendar-outline" size={16} color="#1d4ed8" />
           <Text style={styles.durasiText}>
-            📆 Durasi:{" "}
+            Durasi:{" "}
             {Math.max(
               1,
               Math.round(
@@ -294,7 +331,8 @@ export default function IzinScreen() {
             style={styles.btnTambahFile}
             onPress={() => setShowAttachPicker(true)}
           >
-            <Text style={styles.btnTambahFileText}>+ Tambah File</Text>
+            <Ionicons name="add" size={14} color="white" />
+            <Text style={styles.btnTambahFileText}>Tambah File</Text>
           </TouchableOpacity>
         </View>
 
@@ -304,7 +342,7 @@ export default function IzinScreen() {
             style={styles.attachPlaceholder}
             onPress={() => setShowAttachPicker(true)}
           >
-            <Text style={styles.attachPlaceholderIcon}>📎</Text>
+            <Ionicons name="attach-outline" size={30} color="#9ca3af" />
             <Text style={styles.attachPlaceholderText}>
               Ketuk untuk menambahkan foto atau PDF
             </Text>
@@ -325,7 +363,11 @@ export default function IzinScreen() {
                   />
                 ) : (
                   <View style={styles.attachPdfThumb}>
-                    <Text style={styles.attachPdfIcon}>📄</Text>
+                    <Ionicons
+                      name="document-text-outline"
+                      size={22}
+                      color="#dc2626"
+                    />
                   </View>
                 )}
                 <View style={styles.attachItemInfo}>
@@ -337,15 +379,22 @@ export default function IzinScreen() {
                       {formatFileSize(file.size)}
                     </Text>
                   )}
-                  <Text style={styles.attachItemType}>
-                    {file.type === "image" ? "🖼️ Foto" : "📄 PDF"}
-                  </Text>
+                  <View style={styles.attachItemTypeRow}>
+                    <Ionicons
+                      name={file.type === "image" ? "image-outline" : "document-outline"}
+                      size={11}
+                      color="#6b7280"
+                    />
+                    <Text style={styles.attachItemType}>
+                      {file.type === "image" ? "Foto" : "PDF"}
+                    </Text>
+                  </View>
                 </View>
                 <TouchableOpacity
                   style={styles.attachRemoveBtn}
                   onPress={() => removeAttachment(file.id)}
                 >
-                  <Text style={styles.attachRemoveText}>✕</Text>
+                  <Ionicons name="close" size={14} color="#dc2626" />
                 </TouchableOpacity>
               </View>
             ))}
@@ -353,15 +402,17 @@ export default function IzinScreen() {
               style={styles.btnTambahLagi}
               onPress={() => setShowAttachPicker(true)}
             >
-              <Text style={styles.btnTambahLagiText}>+ Tambah File Lagi</Text>
+              <Ionicons name="add" size={15} color="#dc2626" />
+              <Text style={styles.btnTambahLagiText}>Tambah File Lagi</Text>
             </TouchableOpacity>
           </View>
         )}
       </View>
 
       <View style={styles.infoBox}>
+        <Ionicons name="information-circle-outline" size={16} color="#15803d" />
         <Text style={styles.infoText}>
-          ℹ️ Pengajuan akan dikirim ke admin/atasan untuk direview. Status akan
+          Pengajuan akan dikirim ke admin/atasan untuk direview. Status akan
           diperbarui setelah diproses.
         </Text>
       </View>
@@ -374,7 +425,10 @@ export default function IzinScreen() {
         {submitting ? (
           <ActivityIndicator color="white" />
         ) : (
-          <Text style={styles.btnSubmitText}>📤 Kirim Pengajuan</Text>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+            <Ionicons name="paper-plane-outline" size={17} color="white" />
+            <Text style={styles.btnSubmitText}>Kirim Pengajuan</Text>
+          </View>
         )}
       </TouchableOpacity>
 
@@ -415,23 +469,41 @@ export default function IzinScreen() {
     <View style={{ flex: 1, backgroundColor: "#f9fafb" }}>
       <View style={styles.tabBar}>
         <TouchableOpacity
-          style={[styles.tabItem, tab === "riwayat" && styles.tabActive]}
+          style={[
+            styles.tabItem,
+            { flexDirection: "row", justifyContent: "center", gap: 6 },
+            tab === "riwayat" && styles.tabActive,
+          ]}
           onPress={() => setTab("riwayat")}
         >
+          <Ionicons
+            name="time-outline"
+            size={15}
+            color={tab === "riwayat" ? "#dc2626" : "#9ca3af"}
+          />
           <Text
             style={[styles.tabText, tab === "riwayat" && styles.tabTextActive]}
           >
-            📋 Riwayat
+            Riwayat
           </Text>
         </TouchableOpacity>
         <TouchableOpacity
-          style={[styles.tabItem, tab === "ajukan" && styles.tabActive]}
+          style={[
+            styles.tabItem,
+            { flexDirection: "row", justifyContent: "center", gap: 6 },
+            tab === "ajukan" && styles.tabActive,
+          ]}
           onPress={() => setTab("ajukan")}
         >
+          <Ionicons
+            name="create-outline"
+            size={15}
+            color={tab === "ajukan" ? "#dc2626" : "#9ca3af"}
+          />
           <Text
             style={[styles.tabText, tab === "ajukan" && styles.tabTextActive]}
           >
-            ✏️ Ajukan
+            Ajukan
           </Text>
         </TouchableOpacity>
       </View>

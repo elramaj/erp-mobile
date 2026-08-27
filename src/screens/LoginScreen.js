@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useState } from "react";
 import {
@@ -66,7 +67,7 @@ export default function LoginScreen({ onLoginSuccess }) {
         </View>
 
         <View style={styles.formSection}>
-          <Text style={styles.title}>Selamat Datang 👋</Text>
+          <Text style={styles.title}>Selamat Datang</Text>
           <Text style={styles.subtitle}>Masuk untuk melanjutkan</Text>
 
           <Text style={styles.label}>Email</Text>
@@ -94,7 +95,11 @@ export default function LoginScreen({ onLoginSuccess }) {
               onPress={() => setShowPassword(!showPassword)}
               style={styles.eyeBtn}
             >
-              <Text style={styles.eyeText}>{showPassword ? "🙈" : "👁️"}</Text>
+              <Ionicons
+                name={showPassword ? "eye-off-outline" : "eye-outline"}
+                size={20}
+                color="#6b7280"
+              />
             </TouchableOpacity>
           </View>
 
@@ -106,7 +111,10 @@ export default function LoginScreen({ onLoginSuccess }) {
             {loading ? (
               <ActivityIndicator color="white" />
             ) : (
-              <Text style={styles.btnText}>Masuk →</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
+                <Text style={styles.btnText}>Masuk</Text>
+                <Ionicons name="arrow-forward" size={18} color="white" />
+              </View>
             )}
           </TouchableOpacity>
         </View>

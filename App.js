@@ -22,6 +22,10 @@ import IzinScreen from "./src/screens/IzinScreen";
 import LoginScreen from "./src/screens/LoginScreen";
 
 SplashScreen.preventAutoHideAsync();
+SplashScreen.setOptions({
+  duration: 400,
+  fade: true,
+});
 
 const Stack = createStackNavigator();
 const Tab = createBottomTabNavigator();
@@ -167,6 +171,12 @@ function App() {
     prepareApp();
   }, []);
 
+  useEffect(() => {
+    if (appReady) {
+      SplashScreen.hideAsync();
+    }
+  }, [appReady]);
+
   const prepareApp = async () => {
     try {
       const token = await AsyncStorage.getItem("token");
@@ -200,8 +210,8 @@ function App() {
 
   if (!appReady) {
     return (
-      <View style={{ flex: 1, backgroundColor: "#991b1b" }}>
-        <StatusBar barStyle="light-content" backgroundColor="#991b1b" />
+      <View style={{ flex: 1, backgroundColor: "#dc2626" }}>
+        <StatusBar barStyle="light-content" backgroundColor="#dc2626" />
         <Image
           source={require("./assets/images/splash-icon.png")}
           style={{
@@ -218,8 +228,6 @@ function App() {
       </View>
     );
   }
-
-  SplashScreen.hideAsync();
 
   return (
     <SafeAreaProvider>

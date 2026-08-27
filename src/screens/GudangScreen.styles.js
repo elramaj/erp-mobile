@@ -272,4 +272,12 @@ export default StyleSheet.create({
     marginTop: 16,
   },
   btnTutupText: { fontSize: 15, fontWeight: "700", color: "#374151" },
+  btnBatalModal: {
+    backgroundColor: "#f3f4f6",
+    borderRadius: 12,
+    padding: 14,
+    alignItems: "center",
+    marginTop: 4,
+  },
+  btnBatalModalText: { fontSize: 15, fontWeight: "700", color: "#374151" },
 });

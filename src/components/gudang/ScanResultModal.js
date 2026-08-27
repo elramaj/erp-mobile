@@ -1,20 +1,37 @@
+import { Ionicons } from "@expo/vector-icons";
 import { Modal, Text, TouchableOpacity, View } from "react-native";
 import styles from "../../screens/GudangScreen.styles";
 
 // Popup yang muncul setelah scan mode "cari barang" — nunjukin detail
 // barang atau serial number yang ketemu, atau pesan kalau nggak ketemu.
-export default function ScanResultModal({ visible, scanResult, onClose }) {
+export default function ScanResultModal({
+  visible,
+  scanResult,
+  onClose,
+  onAddNew,
+}) {
   return (
     <Modal visible={visible} transparent animationType="slide">
       <View style={styles.modalOverlay}>
         <View style={styles.modalCard}>
           {scanResult?.success ? (
             <>
-              <Text style={styles.modalTitle}>
-                {scanResult.type === "serial_number"
-                  ? "🔢 Serial Number!"
-                  : "📦 Barang Ditemukan!"}
-              </Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <Ionicons
+                  name={
+                    scanResult.type === "serial_number"
+                      ? "barcode-outline"
+                      : "cube-outline"
+                  }
+                  size={22}
+                  color="#16a34a"
+                />
+                <Text style={[styles.modalTitle, { marginBottom: 0 }]}>
+                  {scanResult.type === "serial_number"
+                    ? "Serial Number!"
+                    : "Barang Ditemukan!"}
+                </Text>
+              </View>
               {scanResult.type === "serial_number" ? (
                 <View>
                   <Text style={styles.modalItem}>
@@ -64,8 +81,31 @@ export default function ScanResultModal({ visible, scanResult, onClose }) {
             </>
           ) : (
             <>
-              <Text style={styles.modalTitle}>❌ Tidak Ditemukan</Text>
+              <View style={{ flexDirection: "row", alignItems: "center", gap: 8, marginBottom: 8 }}>
+                <Ionicons name="close-circle" size={22} color="#dc2626" />
+                <Text style={[styles.modalTitle, { marginBottom: 0 }]}>Tidak Ditemukan</Text>
+              </View>
               <Text style={styles.modalItem}>{scanResult?.message}</Text>
+              {onAddNew && (
+                <TouchableOpacity
+                  style={{
+                    flexDirection: "row",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    gap: 6,
+                    backgroundColor: "#dc2626",
+                    borderRadius: 12,
+                    padding: 14,
+                    marginTop: 12,
+                  }}
+                  onPress={onAddNew}
+                >
+                  <Ionicons name="add-circle-outline" size={18} color="white" />
+                  <Text style={{ color: "white", fontWeight: "700", fontSize: 14 }}>
+                    Daftarkan sebagai barang baru
+                  </Text>
+                </TouchableOpacity>
+              )}
             </>
           )}
           <TouchableOpacity style={styles.btnTutup} onPress={onClose}>

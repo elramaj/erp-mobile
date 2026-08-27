@@ -6,11 +6,6 @@
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
     "userInterfaceStyle": "light",
-    "splash": {
-      "image": "./assets/images/splash-icon.png",
-      "resizeMode": "cover",
-      "backgroundColor": "#dc2626"
-    },
     "ios": {
       "supportsTablet": true
     },
@@ -27,7 +22,19 @@
       ],
       "package": "com.ramaj.erpmobile"
     },
-    "plugins": ["expo-camera", "expo-location"],
+    "plugins": [
+      "expo-camera",
+      "expo-location",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/images/splash-icon.png",
+          "resizeMode": "cover",
+          "backgroundColor": "#dc2626",
+          "imageWidth": 200
+        }
+      ]
+    ],
     "extra": {
       "eas": {
         "projectId": "bf36e0a2-a49f-42c9-9bef-06334cbce347"

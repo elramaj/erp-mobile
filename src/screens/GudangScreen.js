@@ -13,6 +13,7 @@ import {
 } from "react-native";
 import BarcodeScanner from "../components/gudang/BarcodeScanner";
 import ScanResultModal from "../components/gudang/ScanResultModal";
+import TambahBarangModal from "../components/gudang/TambahBarangModal";
 import api from "../services/api";
 import styles from "./GudangScreen.styles";
 
@@ -26,6 +27,8 @@ export default function GudangScreen() {
   const [scanResult, setScanResult] = useState(null);
   const [showScanModal, setShowScanModal] = useState(false);
   const [showResultModal, setShowResultModal] = useState(false);
+  const [showTambahBarang, setShowTambahBarang] = useState(false);
+  const [lastScanKode, setLastScanKode] = useState("");
   const [search, setSearch] = useState("");
   const [selectedBarang, setSelectedBarang] = useState(null);
   const [formMasuk, setFormMasuk] = useState({
@@ -116,6 +119,7 @@ export default function GudangScreen() {
     } else if (scanMode === "cari") {
       // Mode scan cari barang
       setShowScanModal(false);
+      setLastScanKode(data);
       try {
         const res = await api(`/gudang/scan?kode=${encodeURIComponent(data)}`);
         setScanResult(res);
@@ -282,6 +286,18 @@ export default function GudangScreen() {
         >
           <Ionicons name="camera-outline" size={16} color="white" />
           <Text style={styles.btnScanKecilText}>Scan</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={[
+            styles.btnScanKecil,
+            { flexDirection: "row", alignItems: "center", gap: 4, backgroundColor: "#16a34a" },
+          ]}
+          onPress={() => {
+            setLastScanKode("");
+            setShowTambahBarang(true);
+          }}
+        >
+          <Ionicons name="add" size={16} color="white" />
         </TouchableOpacity>
       </View>
       {loading ? (
@@ -701,6 +717,23 @@ export default function GudangScreen() {
         onClose={() => {
           setShowResultModal(false);
           setScanResult(null);
+        }}
+        onAddNew={() => {
+          setShowResultModal(false);
+          setShowTambahBarang(true);
+        }}
+      />
+
+      {/* Modal Tambah Barang Baru */}
+      <TambahBarangModal
+        visible={showTambahBarang}
+        kodeAwal={lastScanKode}
+        onClose={() => setShowTambahBarang(false)}
+        onSuccess={(barangBaru) => {
+          setShowTambahBarang(false);
+          setScanResult(null);
+          loadBarang();
+          Alert.alert("Berhasil!", `${barangBaru.nama} udah terdaftar di gudang.`);
         }}
       />
     </View>

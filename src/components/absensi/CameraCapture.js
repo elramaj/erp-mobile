@@ -1,3 +1,4 @@
+import { Ionicons } from "@expo/vector-icons";
 import { CameraView } from "expo-camera";
 import { Text, TouchableOpacity, View } from "react-native";
 import styles from "../../screens/AbsensiScreen.styles";
@@ -8,9 +9,12 @@ export default function CameraCapture({ mode, cameraRef, onCapture, onCancel }) 
     <View style={styles.cameraContainer}>
       <CameraView ref={cameraRef} style={styles.camera} facing="front">
         <View style={styles.cameraOverlay}>
-          <Text style={styles.cameraTitle}>
-            {mode === "checkin" ? "📸 Foto Check-In" : "📸 Foto Check-Out"}
-          </Text>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 8 }}>
+            <Ionicons name="camera-outline" size={18} color="white" />
+            <Text style={styles.cameraTitle}>
+              {mode === "checkin" ? "Foto Check-In" : "Foto Check-Out"}
+            </Text>
+          </View>
           <View style={styles.faceGuide} />
           <View style={styles.cameraButtons}>
             <TouchableOpacity style={styles.btnBatal} onPress={onCancel}>
